@@ -44,6 +44,8 @@
 
 参数全部合法且与成功的 5 个定价工具同源，**结论为这两个工具当前服务端不可用**，非入参问题。
 
+**2026-09-04 收尾复测**：又各重试 3 次，仍全部返回「服务暂时不可用，请稍后重试」。累计 `options_calc_accumulator` 13 次、`options_calc_single_shark_fin` 12 次，无一成功。同批复测的其他历史失败项（futures_data 的 `midstream`/`downstream`、company_data 的两个 timeout）均已恢复正常，说明这两个工具是持续性故障而非环境问题。
+
 ## 二、已修复 ✅（对比上一轮快照）
 
 | 项 | 原状 | 现状 |
