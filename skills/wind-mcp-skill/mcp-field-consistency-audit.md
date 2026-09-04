@@ -10,6 +10,8 @@
 
 共 **132 个工具、444 个参数**。endpoint 形如 `https://mcp.wind.com.cn/vserver_<name>/mcp/`。
 
+**逐工具实调进度**：[finance_data 13/13](finance-data-audit.md) · [stock_research 15/15](stock-research-audit.md) · [fund_research 23/23](fund-research-audit.md) · [edb_data 3/3](edb-data-audit.md) · [company_data 区间 27/27](company-data-date-fields.md)。未逐个调过：options_data(17)、futures_data(9)。
+
 ## 结论速览
 
 | 维度 | 判定 | 说明 |
@@ -20,7 +22,7 @@
 | 时间区间字段名 | ✅ **已统一** | `startDate`/`endDate` 39/40 处；仅剩 `beginDate` 1 处 |
 | 单日期字段名 | ❌ | 7 种：`date` `tradeDate` `asOfDate` `reportDate` `reportPeriod` `time` `valuationDate` |
 | 日期格式 | 基本统一 | 主流 `YYYY-MM-DD`；4 处例外 |
-| 行业分类枚举 | ❌ **高风险** | 3 个字段名 + 4 套冲突编码，同名 `industryType` 同值不同义 |
+| 行业分类枚举 | ❌ | 3 个字段名 + 4 套描述表；实测后端只有一套实现，**冲突在描述不在数据**（见 `fund-research-audit.md` §⑤） |
 | 布尔开关命名 | ❌ | 3 套范式；`history` 与 `includeHistory` 同义不同名 |
 | 枚举载体类型 | ❌ | 数字编码枚举一半 `string` 一半 `integer` |
 | 中英文枚举策略 | ❌ | futures_data 内 4 工具 3 种互斥要求 |
@@ -66,16 +68,11 @@
 
 **格式例外 4 处**：`general_query_documents` 的 `startDate`/`endDate` 是 `YYYY-MM-DD HH:MM:SS`（同名不同格式，最易踩坑）；`time` ×2 带时分；`reportPeriod`(stock) 是 `FY2025`；`ratingPeriod` 是 `YYYY-MM`。
 
-## 三、行业分类枚举 —— 高风险 ⚠️
+## 三、行业分类枚举 —— 描述表互相矛盾
 
-| 工具 | 字段 | 编码 |
-|---|---|---|
-| `fund_get_brinson_attribution` | `industryStandard` | 0=证监会 / 1=申万一 / **2=万得一** / 3=中信一 / 5=申万一2021 |
-| `fund_get_industry_allocation` | `classificationType` | 3=中信一 / 4=中信二 / 5=万得一 / 6=万得二 / 10=申万一2021 / 11=申万二2021 |
-| `fund_get_equity_holdings` | `industryType` | **2=中信一** / 3=中信二 / 4=AMAC / 5=GICS一 / 7=Wind一 / 10=申万2021一 / 11=申万2021二 |
-| `fund_get_top_equity_holdings` | `industryType` | **2=申万二** / 3=申万三 / 4=中信一 / 5=中信二 / 7=万得一 / 10=国证一 / 11=国证二 |
+3 个字段名表达同一概念：`industryType`（fund_get_equity_holdings / fund_get_top_equity_holdings）、`classificationType`（fund_get_industry_allocation）、`industryStandard`（fund_get_brinson_attribution）。
 
-**同 server、同字段名 `industryType`，`"2"` 在一个工具是「中信一级」、另一个是「申万二级」**；`"5"` `"10"` `"11"` 同样冲突。不报错，静默返回错口径数据。
+两个 `industryType` 的枚举描述互相矛盾（如 `2` 一个写"中信一级"、一个写"申万二级"）。**2026-09-04 逐值实调修正**：后端只有一套实现，7/7 测试取值两工具返回完全相同——问题在 `fund_get_top_equity_holdings` 的描述写错了，不是数据错。Agent 按错误描述选码会拿到空值或非预期口径。明细见 [`fund-research-audit.md`](fund-research-audit.md) §⑤。
 
 ## 四、其他不统一
 
@@ -103,7 +100,7 @@
 
 | P | 动作 |
 |---|---|
-| **P0** | 统一 `fund_get_equity_holdings` 与 `fund_get_top_equity_holdings` 的 `industryType` 编码表（当前静默返回错口径） |
+| **P0** | 修 `fund_get_top_equity_holdings.industryType` 的枚举描述（与实际实现对齐，实测后端与 `fund_get_equity_holdings` 一致） |
 | **P0** | 修拼写：`nontional` → `notionalPrincipal`；`indexs` → `indexes` |
 | **P1** | `quote_get_realtime_indicators.windCodes` 改 `array<string>`（或两者都收） |
 | **P1** | 解开 `required`+`default` 矛盾（4 处），二选一 |
