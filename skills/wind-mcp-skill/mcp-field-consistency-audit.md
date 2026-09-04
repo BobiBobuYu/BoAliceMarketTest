@@ -21,7 +21,7 @@
 | 证券代码字段名 | 基本统一 | `windCode`(40) / `windCodes`(13)；6 处例外 |
 | 证券代码类型 | ❌ | `windCodes` 13 处 `array`，1 处逗号分隔 `string` |
 | 证券代码语义 | ❌ | 同名 `windCode` 在各 server 分指股票/基金/期货**品种**/期权标的/板块 |
-| 时间区间字段名 | ❌ **回退** | company_data 27 处已回滚为 `timeFrom`/`timeTo`，且**后端只认未声明的 `startDate`/`endDate`**（P0，见 [company-data-audit.md](company-data-audit.md)）；其余 server 均为 `startDate`/`endDate` |
+| 时间区间字段名 | ✅ **已统一** | 7 个 server 全部 `startDate`/`endDate`；company_data 27 处经 4 轮反复后已与后端对齐 |
 | 单日期字段名 | ❌ | 7 种：`date` `tradeDate` `asOfDate` `reportDate` `reportPeriod` `time` `valuationDate` |
 | 日期格式 | 基本统一 | 主流 `YYYY-MM-DD`；4 处例外 |
 | 行业分类枚举 | ❌ | 3 个字段名 + 4 套描述表；实测后端只有一套实现，**冲突在描述不在数据**（见 `fund-research-audit.md` §⑤） |
@@ -32,7 +32,7 @@
 | 参数大小写 | ✅ | 444 个参数全 camelCase |
 | 与旧 7 个 server | 代际断层 | 旧用 snake_case（`windcode`/`begin_date`/`top_k`） |
 
-> **2026-09-04 变更**：company_data 的区间字段先改为 `startDate`/`endDate`、后又**回滚**为 `timeFrom`/`timeTo`，而后端始终只认 `startDate`/`endDate` —— 当前 schema 与实现错位（P0）；同轮 `title` 补齐 127/127、描述全面改结构化模板。options_data 4 工具改名并移除 `subCode`、`title` 100%、`dividendYield` 小数口径补齐。futures_data 区间数组已拆为 `startDate`/`endDate`、前缀统一 `futures_*`。
+> **2026-09-04 变更**：company_data 区间字段经 4 轮反复（`timeFrom`↔`startDate`），当前为 `startDate`/`endDate` 且与后端一致，27/27 实测生效；同轮 `title` 补齐 127/127、描述改结构化模板。finance_data 的 `beginDate` 与嵌套 `params.begin/end` 均已改为 `startDate`/`endDate`。futures_data 区间数组已拆分、前缀统一 `futures_*`。options_data 4 工具改名、移除 `subCode`、`title` 100%、`dividendYield` 小数口径补齐。
 
 ---
 

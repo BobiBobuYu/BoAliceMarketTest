@@ -1,7 +1,7 @@
 # 非 `startDate`/`endDate` 的时间范围入参
 
 实连 `tools/list`，2026-09-04。范围：company_data 以外的 5 个 server，共 78 个工具。
-（company_data 单列：其 27 个区间工具的 schema 已**回滚**为 `timeFrom`/`timeTo`，而后端只认 `startDate`/`endDate`，见 [`company-data-audit.md`](company-data-audit.md) P0）
+（company_data 的 27 个区间工具经 4 轮反复后已稳定为 `startDate`/`endDate` 且与后端一致，见 [`company-data-date-fields.md`](company-data-date-fields.md)）
 
 ## 速览
 

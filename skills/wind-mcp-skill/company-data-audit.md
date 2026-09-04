@@ -2,41 +2,20 @@
 
 实连 + 逐个调用，2026-09-04。**54 个工具全部调用成功**，127 个参数。样本：恒大地产集团有限公司。
 
-## 🔴 P0：schema 声明的日期字段后端不认，静默返回全量数据
+## ✅ 日期字段错位已修复（2026-09-04 第 4 轮复测）
 
-本轮复测发现 **27 个工具的区间字段从 `startDate`/`endDate` 回滚为 `timeFrom`/`timeTo`**，但**后端实际只认 `startDate`/`endDate`**——schema 里声明的 `timeFrom`/`timeTo` 被静默丢弃。
+本日该 server 的区间字段名反复变更 4 次，其中第 3 轮出现 schema 与后端错位，现已闭环：
 
-按 schema 调用（传 `timeFrom`/`timeTo`）的结果与**完全不传日期一致**：
-
-| 工具 | 不传日期 | `timeFrom`+`timeTo`（schema 声明） | `startDate`+`endDate`（schema 未声明） |
+| 轮次 | schema 声明 | 后端实际接受 | 一致 |
 |---|---|---|---|
-| `company_get_judgments` | 2277 | **2277** ← 被忽略 | **198** ← 生效 |
-| `company_get_penalty_info` | 52 | **52** | **0** |
-| `company_get_share_lockup` | 454 | **454** | **108** |
-| `company_get_court_announcements` | 1577 | **1577** | **205** |
-| `company_get_legal_notice` | 20 | **20** | **18** |
-| `company_get_discredit` | 436 | **436** | **110** |
-| `company_get_executed_persons` | 410 | **410** | **48** |
+| 1 | `timeFrom` / `timeTo` | `timeFrom` / `timeTo` | ✅ |
+| 2 | `startDate` / `endDate` | `startDate` / `endDate` | ✅ |
+| 3（回滚） | `timeFrom` / `timeTo` | `startDate` / `endDate` | ❌ 错位 |
+| **当前** | **`startDate` / `endDate`** | **`startDate` / `endDate`** | ✅ |
 
-（区间统一取 `2025-01-01 ~ 2025-12-31`，数字为「记录总数」）
+第 3 轮错位期间，按 schema 传 `timeFrom` 会被静默忽略、返回近 5 年全量数据，且「超 5 年 / 起止颠倒 / 格式错误」三类校验一并失效。当前已全部恢复：27/27 工具区间生效，三类校验正常。逐工具证据见 [`company-data-date-fields.md`](company-data-date-fields.md)。
 
-**已扩展到全部 27 个工具复测：`timeFrom` 列与「不传日期」列逐字节相同 27/27，`startDate` 列产生差异 27/27。**逐工具清单与证据见 [`company-data-date-fields.md`](company-data-date-fields.md)。
-
-判定依据（返回标题是否回显区间）：
-
-```
-不传日期     len=104   # 企业税收违法信息的查询结果
-timeFrom    len=104   # 企业税收违法信息的查询结果                    ← 与不传逐字相同
-startDate   len=138   # 企业税收违法信息的查询结果（恒大地产集团有限公司；2025-01-01~2025-12-31）
-```
-
-**危害**：任何按 schema 正确构造请求的调用方都会传 `timeFrom`/`timeTo`，然后**无任何报错地拿到近 5 年全量数据**，却以为已按区间筛选。上一轮 `startDate`/`endDate` 版本还有「超 5 年」「起止颠倒」「格式错误」三类校验报错，回滚后传 `timeFrom` 连这些校验都不触发了。
-
-**建议（二选一，P0）**：
-- 后端改为接受 `timeFrom`/`timeTo`（与当前 schema 一致）；或
-- schema 改回 `startDate`/`endDate`（与后端一致，且与其余 6 个 server 对齐）
-
-无论选哪个，**未知日期字段必须报错而非静默忽略**。
+**遗留**：26/27 个工具的报错文案仍指向已不存在的 `timeFrom`/`timeTo`（如传 `startDate=2019-01-01` 报 `timeFrom不能早于5年前的今天`）；`company_get_news_sentiment` 自成一套文案；报错里的 `yyyy-MM-dd` 与描述里的 `YYYY-MM-DD` 大小写不一致。
 
 ## 一、调用验证 54/54 ✅
 
@@ -109,9 +88,9 @@ startDate   len=138   # 企业税收违法信息的查询结果（恒大地产�
 
 | P | 动作 |
 |---|---|
-| **P0** | 消除 schema 与后端的日期字段错位（见文首），未知字段必须报错 |
-| **P0** | 恢复日期校验：超 5 年 / 起止颠倒 / 格式错误三类报错在回滚后已失效 |
-| P1 | 报错文案改用与 schema 一致的字段名（上一轮即存在：传 `startDate` 报 `timeFrom不能大于timeTo`） |
+| ~~P0~~ | ✅ 已修复：schema 与后端日期字段已对齐，三类校验已恢复 |
+| **P1** | 报错文案改用与 schema 一致的字段名：26 个工具仍报 `timeFrom`；`yyyy-MM-dd` → `YYYY-MM-DD` |
+| P2 | 未知日期字段应报错而非静默忽略 |
 | P1 | 描述模板做语言润色：去掉「XX查询公开记录」的动词重复、「企业的企业」、内部分类分隔符 `｜` |
 | P2 | `company_list_equity_change` 的 1 年隐藏窗口写进描述，或开放为参数 |
 | P2 | 截断改结构化字段（`total` / `returned` / `hasMore`），并提供分页入参 |
