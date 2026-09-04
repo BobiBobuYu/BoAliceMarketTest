@@ -4,9 +4,14 @@
 
 ## 时间区间（27 个工具）
 
-`startDate` + `endDate`，27 个工具**完全一致**：`string`、可选、`YYYY-MM-DD`、默认近 5 年→今天。description 27 份逐字相同。
+**⚠️ 2026-09-04 复测：字段名已回滚为 `timeFrom` / `timeTo`，且后端只认 `startDate`/`endDate`——schema 声明的字段被静默忽略。详见 [`company-data-audit.md`](company-data-audit.md) 文首 P0。**
 
-> 2026-09-04 已由 `timeFrom`/`timeTo` 改名而来，与其他 5 个 server 对齐。
+schema 现状：`timeFrom` + `timeTo`，27 个工具一致：`string`、可选、`YYYY-MM-DD`、默认近 5 年→今天。
+
+| 版本 | schema 字段 | 后端实际接受 |
+|---|---|---|
+| 本轮（回滚后） | `timeFrom` / `timeTo` | **`startDate` / `endDate`** ← 错位 |
+| 上一轮 | `startDate` / `endDate` | `startDate` / `endDate` ✅ |
 
 | 主题 | 工具 |
 |---|---|
@@ -23,7 +28,9 @@
 
 **额外过滤**：4 个司法类（`court_announcements` `court_sessions` `filing_info` `judgments`）支持 `causeOfAction` + `role`；`news_sentiment` 支持 `tagCode` + `emotionId` + `newsPenetrateEnable`。
 
-## 实测验证：`startDate`/`endDate` 真实生效 ✅
+## 实测验证（上一轮 `startDate`/`endDate` 版本）✅
+
+> 下表为上一轮 schema 与后端一致时的验证结果。回滚后后端行为未变（仍认 `startDate`/`endDate`），但 schema 已不再声明这两个字段。
 
 | 验证项 | 结果 |
 |---|---|
@@ -38,12 +45,14 @@
 
 | 问题 | 涉及 |
 |---|---|
-| **报错文案仍用旧字段名** `timeFrom`/`timeTo`：`timeFrom不能早于5年前的今天：2021-09-04` / `timeFrom不能大于timeTo` / `timeFrom格式不正确，应为yyyy-MM-dd格式` | 全部 27 个 |
+| **schema 与后端字段错位**（P0，见 `company-data-audit.md`） | 全部 27 个 |
+| **`title` 已补齐 127/127** ✅（上一轮 105 个缺失） | — |
+| 报错文案用 `timeFrom`/`timeTo`：`timeFrom不能早于5年前的今天：2021-09-04` / `timeFrom不能大于timeTo` / `timeFrom格式不正确，应为yyyy-MM-dd格式` | 全部 27 个 |
 | **旧字段被静默吞掉**：传 `timeFrom`/`timeTo` 不报错，返回默认近 5 年数据，老调用方无感知拿到错范围 | 全部 27 个 |
 | `news_sentiment` 报错文案与其余 26 个不一致，且格式错误时报 `timeTo` 而非 `timeFrom` | 1 个 |
 | 格式提示 `yyyy-MM-dd` 与 description 的 `YYYY-MM-DD` 大小写不一致 | 全部 27 个 |
-| `title` 只有 6 个工具有（`bankruptcy_reorg` `discredit` `executed_persons` `final_case` `high_consumers` `share_lockup`），其余 21 个缺失 | 21 个 |
-| 描述承诺时间窗口但无区间参数：`get_enterprise_score` `get_liquidation`（近五年）、`list_equity_change` `list_bidding`（近一年） | 4 个 |
+| ~~`title` 缺失~~ ✅ 已补齐 127/127 | — |
+| ~~描述承诺时间窗口但无区间参数~~ ✅ 描述已重写，不再提窗口（但 `list_equity_change` 后端仍隐含 1 年窗口且未文档化） | 1 个 |
 
 ## 无日期参数（27 个工具）
 
@@ -55,6 +64,7 @@
 
 ```jsonc
 {"companyKey": "贵州茅台股份有限公司"}                                    // 默认近5年
+// ⚠️ 当前后端只认 startDate/endDate（schema 却声明 timeFrom/timeTo）
 {"companyKey": "91440101231245152Y", "startDate": "2024-01-01", "endDate": "2026-09-04"}
 ```
 

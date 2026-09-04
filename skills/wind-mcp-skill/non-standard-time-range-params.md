@@ -1,7 +1,7 @@
 # 非 `startDate`/`endDate` 的时间范围入参
 
 实连 `tools/list`，2026-09-04。范围：company_data 以外的 5 个 server，共 78 个工具。
-（company_data 27 个工具已全部改为 `startDate`/`endDate`，见 `company-data-date-fields.md`）
+（company_data 单列：其 27 个区间工具的 schema 已**回滚**为 `timeFrom`/`timeTo`，而后端只认 `startDate`/`endDate`，见 [`company-data-audit.md`](company-data-audit.md) P0）
 
 ## 速览
 
@@ -26,7 +26,7 @@
 
 起点用 begin 词根、终点用 end，一对参数内部不成对。同 server 的 `general_query_documents` 用的是 `startDate`/`endDate`，两个都是文档检索工具。
 
-> company_data 改完后，这是**唯一还在用 begin 词根的顶层区间起点**。
+> 2026-09-04 复测：`general_search_documents` 的 `beginDate` **已改为 `startDate`**，本项已闭环（详见 `finance-data-audit.md`）。
 
 ### 2. `quote_get_historical_dataseries`（finance_data）—— `params.begin` + `params.end`
 

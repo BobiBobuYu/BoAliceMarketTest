@@ -10,7 +10,7 @@
 
 共 **132 个工具、444 个参数**。endpoint 形如 `https://mcp.wind.com.cn/vserver_<name>/mcp/`。
 
-**逐工具实调进度（全部完成）**：[finance_data 13/13](finance-data-audit.md) · [stock_research 15/15](stock-research-audit.md) · [fund_research 23/23](fund-research-audit.md) · [futures_data 9/9](futures-data-audit.md) · [options_data 15/17](options-data-audit.md) · [edb_data 3/3](edb-data-audit.md) · [company_data 区间 27/27](company-data-date-fields.md)。
+**逐工具实调进度（7 个 server 全部完成）**：[company_data 54/54](company-data-audit.md) · [fund_research 23/23](fund-research-audit.md) · [options_data 15/17](options-data-audit.md) · [stock_research 15/15](stock-research-audit.md) · [finance_data 13/13](finance-data-audit.md) · [futures_data 9/9](futures-data-audit.md) · [edb_data 3/3](edb-data-audit.md)。
 
 > `options_calc_accumulator` / `options_calc_single_shark_fin` 服务端不可用（13 次尝试、9 种参数变体全部返回「服务暂时不可用」），非入参问题。
 
@@ -21,18 +21,18 @@
 | 证券代码字段名 | 基本统一 | `windCode`(40) / `windCodes`(13)；6 处例外 |
 | 证券代码类型 | ❌ | `windCodes` 13 处 `array`，1 处逗号分隔 `string` |
 | 证券代码语义 | ❌ | 同名 `windCode` 在各 server 分指股票/基金/期货**品种**/期权标的/板块 |
-| 时间区间字段名 | ✅ **已统一** | `startDate`/`endDate` 39/40 处；仅剩 `beginDate` 1 处 |
+| 时间区间字段名 | ❌ **回退** | company_data 27 处已回滚为 `timeFrom`/`timeTo`，且**后端只认未声明的 `startDate`/`endDate`**（P0，见 [company-data-audit.md](company-data-audit.md)）；其余 server 均为 `startDate`/`endDate` |
 | 单日期字段名 | ❌ | 7 种：`date` `tradeDate` `asOfDate` `reportDate` `reportPeriod` `time` `valuationDate` |
 | 日期格式 | 基本统一 | 主流 `YYYY-MM-DD`；4 处例外 |
 | 行业分类枚举 | ❌ | 3 个字段名 + 4 套描述表；实测后端只有一套实现，**冲突在描述不在数据**（见 `fund-research-audit.md` §⑤） |
 | 布尔开关命名 | ❌ | 3 套范式；`history` 与 `includeHistory` 同义不同名 |
 | 枚举载体类型 | ❌ | 数字编码枚举一半 `string` 一半 `integer` |
 | 中英文枚举策略 | ❌ | futures_data 内 4 工具 3 种互斥要求 |
-| 参数 `title` 覆盖 | ❌ | 5 个 server 100%，finance_data 78%、stock_research 83%、company_data 仅 17% |
+| 参数 `title` 覆盖 | 接近统一 | 6 个 server 100%（company_data 已补齐 127/127）；仅剩 finance_data 78%、stock_research 83% |
 | 参数大小写 | ✅ | 444 个参数全 camelCase |
 | 与旧 7 个 server | 代际断层 | 旧用 snake_case（`windcode`/`begin_date`/`top_k`） |
 
-> **2026-09-04 已修复**：company_data 27 个工具 `timeFrom`/`timeTo` → `startDate`/`endDate`（[验证详情](company-data-date-fields.md)）；options_data 4 工具改名并移除 `subCode`，`title` 补齐到 100%；`required`+`default` 冲突从 6 处降到 4 处。
+> **2026-09-04 变更**：company_data 的区间字段先改为 `startDate`/`endDate`、后又**回滚**为 `timeFrom`/`timeTo`，而后端始终只认 `startDate`/`endDate` —— 当前 schema 与实现错位（P0）；同轮 `title` 补齐 127/127、描述全面改结构化模板。options_data 4 工具改名并移除 `subCode`、`title` 100%、`dividendYield` 小数口径补齐。futures_data 区间数组已拆为 `startDate`/`endDate`、前缀统一 `futures_*`。
 
 ---
 
