@@ -10,7 +10,9 @@
 
 共 **132 个工具、444 个参数**。endpoint 形如 `https://mcp.wind.com.cn/vserver_<name>/mcp/`。
 
-**逐工具实调进度**：[finance_data 13/13](finance-data-audit.md) · [stock_research 15/15](stock-research-audit.md) · [fund_research 23/23](fund-research-audit.md) · [edb_data 3/3](edb-data-audit.md) · [company_data 区间 27/27](company-data-date-fields.md)。未逐个调过：options_data(17)、futures_data(9)。
+**逐工具实调进度（全部完成）**：[finance_data 13/13](finance-data-audit.md) · [stock_research 15/15](stock-research-audit.md) · [fund_research 23/23](fund-research-audit.md) · [futures_data 9/9](futures-data-audit.md) · [options_data 15/17](options-data-audit.md) · [edb_data 3/3](edb-data-audit.md) · [company_data 区间 27/27](company-data-date-fields.md)。
+
+> `options_calc_accumulator` / `options_calc_single_shark_fin` 服务端不可用（13 次尝试、9 种参数变体全部返回「服务暂时不可用」），非入参问题。
 
 ## 结论速览
 
@@ -26,7 +28,7 @@
 | 布尔开关命名 | ❌ | 3 套范式；`history` 与 `includeHistory` 同义不同名 |
 | 枚举载体类型 | ❌ | 数字编码枚举一半 `string` 一半 `integer` |
 | 中英文枚举策略 | ❌ | futures_data 内 4 工具 3 种互斥要求 |
-| 参数 `title` 覆盖 | ❌ | 4 个 server 100%，company_data 仅 17% |
+| 参数 `title` 覆盖 | ❌ | 5 个 server 100%，finance_data 78%、stock_research 83%、company_data 仅 17% |
 | 参数大小写 | ✅ | 444 个参数全 camelCase |
 | 与旧 7 个 server | 代际断层 | 旧用 snake_case（`windcode`/`begin_date`/`top_k`） |
 
@@ -87,8 +89,8 @@
 | **拼写错误** | `options_calc_autocall_snowball` 的 **`nontional`**（同 server 另一工具叫 `notionalPrincipal`）；`fund_get_style_analysis` 的 **`indexs`** |
 | **`required`+`default` 矛盾**（4 处） | `quote_get_realtime_indicators.indexes`、`fund_get_brinson_attribution.benchCode`(默认上证综指)、`options_calc_vanilla.assetClass`/`optionType` |
 | **`title` 缺失** | company_data 105/127（17% 覆盖）；finance_data 7/32；stock_research 3/18。fund_research / futures_data / options_data 均 100% |
-| **小数口径漏写** | `options_calc_binary` / `_vanilla` / `_autocall_snowball` 的 `dividendYield` 未写「小数形式」，同 server 另 5 处写了 |
-| **工具命名前缀** | 4 个 server 单前缀 ✅；futures_data 混入 `commodity_get_supply_demand`；finance_data 用 `general_*`+`quote_*` 双前缀 |
+| ~~小数口径漏写~~ | ✅ 已修复：7 个 `options_calc_*` 的 `dividendYield` 均已补「小数形式」 |
+| **工具命名前缀** | 5 个 server 单前缀 ✅（futures_data 的 `commodity_*` 已改为 `futures_*`）；finance_data 仍为 `general_*`+`quote_*` 双前缀 |
 
 ## 五、与旧 7 个 server 的代际断层
 
@@ -101,7 +103,7 @@
 | P | 动作 |
 |---|---|
 | **P0** | 修 `fund_get_top_equity_holdings.industryType` 的枚举描述（与实际实现对齐，实测后端与 `fund_get_equity_holdings` 一致） |
-| **P0** | 修拼写：`nontional` → `notionalPrincipal`；`indexs` → `indexes` |
+| **P0** | 修拼写：`nontional` → `notionalPrincipal`（options_data）；`indexs` → `indexes`（fund_research）—— 两处 2026-09-04 复测均**仍未修** |
 | **P1** | `quote_get_realtime_indicators.windCodes` 改 `array<string>`（或两者都收） |
 | **P1** | 解开 `required`+`default` 矛盾（4 处），二选一 |
 | **P1** | 剩余 3 处区间收敛（见 `non-standard-time-range-params.md`） |
