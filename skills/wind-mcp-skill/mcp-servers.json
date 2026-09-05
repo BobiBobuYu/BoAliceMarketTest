@@ -1,0 +1,2292 @@
+{
+  "$schema": "wind-mcp-server-registry/1",
+  "generatedAt": "2026-09-05",
+  "transport": {
+    "protocol": "MCP Streamable HTTP (JSON-RPC 2.0 over POST)",
+    "endpointPattern": "https://mcp.wind.com.cn/<serverName>/mcp/",
+    "method": "POST",
+    "headers": {
+      "Authorization": "Bearer <WIND_API_KEY>",
+      "Accept": "application/json, text/event-stream",
+      "Content-Type": "application/json"
+    },
+    "handshake": "每次请求前先发 initialize（protocolVersion 2025-03-26），再发 tools/list 或 tools/call。服务端是 stateless，不下发 session id。",
+    "responseFormat": "SSE（取最后一条 data: 行做 JSON.parse）或纯 JSON，两种都要兼容",
+    "jsonRpcIdMustBeInteger": true,
+    "apiKeyLookupOrder": [
+      "~/.wind-aifinmarket/config 的 WIND_API_KEY",
+      "<skillDir>/config.json 的 wind_api_key",
+      "环境变量 WIND_API_KEY"
+    ]
+  },
+  "caveats": [
+    "jsonrpc id 必须是整数：传浮点数（如 Date.now()+Math.random()）会导致服务端返回空响应体",
+    "业务错误普遍以纯文本 + isError=false 返回，不能只靠协议层判定成败，需匹配文本",
+    "未知入参字段会被静默忽略而不报错——字段名写错时会拿到默认范围的数据",
+    "tools/list 结果会变动（本会话内 company_data 日期字段改了 4 轮、fund_research 掉了 3 个工具、options_data 改名 4 个），调用前应重新拉取而非使用缓存"
+  ],
+  "servers": {
+    "vserver_finance_data": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_finance_data/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 13,
+      "paramCount": 32,
+      "tools": [
+        {
+          "name": "quote_search_realtime_indicators",
+          "required": [
+            "keyword"
+          ],
+          "params": [
+            "keyword"
+          ],
+          "verifiedSampleArgs": {
+            "keyword": "最新价"
+          }
+        },
+        {
+          "name": "quote_get_realtime_indicators",
+          "required": [
+            "windCodes",
+            "indexes"
+          ],
+          "params": [
+            "windCodes",
+            "indexes"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": "600519.SH,000858.SZ",
+            "indexes": "中文简称,最新成交价,涨跌幅"
+          },
+          "knownIssue": "2026-09-05 复测服务端不可用（3 次重试均返回「服务暂时不可用，请稍后重试」）；2026-09-04 曾正常"
+        },
+        {
+          "name": "quote_get_historical_data_series",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "type",
+            "params"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH",
+            "type": 1,
+            "params": {
+              "rangeflag": 2,
+              "startDate": "2026-08-01",
+              "endDate": "2026-08-29",
+              "period": "10",
+              "indexes": "TIME,OPEN,HIGH,LOW,MATCH"
+            }
+          }
+        },
+        {
+          "name": "general_search_indicators",
+          "required": [
+            "keyword"
+          ],
+          "params": [
+            "keyword",
+            "windCode",
+            "maxCount"
+          ],
+          "verifiedSampleArgs": {
+            "keyword": "收盘价",
+            "windCode": "600519.SH",
+            "maxCount": 3
+          }
+        },
+        {
+          "name": "general_get_indicator_data",
+          "required": [
+            "windCode",
+            "indicatorCode"
+          ],
+          "params": [
+            "windCode",
+            "indicatorCode",
+            "parameter"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH",
+            "indicatorCode": "s_dq_close"
+          }
+        },
+        {
+          "name": "general_search_datasets",
+          "required": [],
+          "params": [
+            "keyword"
+          ],
+          "verifiedSampleArgs": {
+            "keyword": "股本"
+          }
+        },
+        {
+          "name": "general_get_dataset",
+          "required": [
+            "reportId",
+            "condition"
+          ],
+          "params": [
+            "reportId",
+            "condition"
+          ],
+          "verifiedSampleArgs": {
+            "reportId": "InstitutionalInvestors21",
+            "condition": {
+              "windCode": "600519.SH"
+            }
+          }
+        },
+        {
+          "name": "general_search_documents",
+          "required": [
+            "documentType"
+          ],
+          "params": [
+            "documentType",
+            "keyword",
+            "windCode",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "documentType": "新闻",
+            "keyword": "贵州茅台",
+            "startDate": "2026-08-01",
+            "endDate": "2026-09-04"
+          }
+        },
+        {
+          "name": "general_get_document",
+          "required": [
+            "documentType",
+            "documentId"
+          ],
+          "params": [
+            "documentType",
+            "documentId"
+          ],
+          "verifiedSampleArgs": {
+            "documentType": "news",
+            "documentId": "<从 general_search_documents 的「文档编号」取>"
+          },
+          "knownIssue": "documentId 必须来自 general_search_documents 返回的「文档编号」，样例中为占位符；直接跑冒烟会返回「文档详情数据为空」"
+        },
+        {
+          "name": "general_query_documents",
+          "required": [
+            "question"
+          ],
+          "params": [
+            "question",
+            "docType",
+            "queryMode",
+            "topK",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "question": "贵州茅台最新新闻",
+            "topK": 2
+          }
+        },
+        {
+          "name": "general_search_research_insight",
+          "required": [],
+          "params": [
+            "keyword"
+          ],
+          "verifiedSampleArgs": {}
+        },
+        {
+          "name": "general_get_research_insight",
+          "required": [
+            "templateId"
+          ],
+          "params": [
+            "templateId",
+            "arg"
+          ],
+          "verifiedSampleArgs": {
+            "templateId": "T001"
+          }
+        },
+        {
+          "name": "general_query_data",
+          "required": [
+            "question"
+          ],
+          "params": [
+            "question"
+          ],
+          "verifiedSampleArgs": {
+            "question": "贵州茅台最新收盘价"
+          }
+        }
+      ]
+    },
+    "vserver_stock_research": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_stock_research/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 15,
+      "paramCount": 18,
+      "tools": [
+        {
+          "name": "stock_get_market_realtime_analysis",
+          "required": [],
+          "params": [
+            "marketType"
+          ],
+          "verifiedSampleArgs": {
+            "marketType": "1"
+          }
+        },
+        {
+          "name": "stock_get_sector_realtime_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "半导体"
+          }
+        },
+        {
+          "name": "stock_get_market_narratives",
+          "required": [],
+          "params": [
+            "limit"
+          ],
+          "verifiedSampleArgs": {
+            "limit": 3
+          }
+        },
+        {
+          "name": "stock_get_narrative_details",
+          "required": [],
+          "params": [
+            "childId",
+            "keyword"
+          ],
+          "verifiedSampleArgs": {
+            "keyword": "AI"
+          }
+        },
+        {
+          "name": "stock_get_asset_market_performance",
+          "required": [],
+          "params": [],
+          "verifiedSampleArgs": {}
+        },
+        {
+          "name": "stock_get_industry_research",
+          "required": [
+            "keyword"
+          ],
+          "params": [
+            "keyword"
+          ],
+          "verifiedSampleArgs": {
+            "keyword": "半导体"
+          }
+        },
+        {
+          "name": "stock_get_company_profile",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_get_company_finance_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "currency",
+            "reportType",
+            "reportPeriod"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH",
+            "reportPeriod": "FY2025"
+          }
+        },
+        {
+          "name": "stock_get_company_earnings_estimate",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_get_company_valuation",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_get_company_updates",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_get_money_flow_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_get_technical_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_get_realtime_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "600519.SH"
+          }
+        },
+        {
+          "name": "stock_screener",
+          "required": [
+            "question"
+          ],
+          "params": [
+            "question"
+          ],
+          "verifiedSampleArgs": {
+            "question": "筛选沪深市场市值超500亿且连续5日上涨的股票"
+          }
+        }
+      ]
+    },
+    "vserver_fund_research": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_fund_research/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 21,
+      "paramCount": 76,
+      "tools": [
+        {
+          "name": "fund_get_similar_funds",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "startDate",
+            "endDate",
+            "onlyValid"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF"
+          }
+        },
+        {
+          "name": "fund_get_brinson_attribution",
+          "required": [
+            "windCode",
+            "benchCode"
+          ],
+          "params": [
+            "windCode",
+            "benchCode",
+            "reportDate",
+            "heldFundType",
+            "queryMode",
+            "industryStandard"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "benchCode": "000300.SH",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_style_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "startDate",
+            "endDate",
+            "cycle",
+            "indexs"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "startDate": "2025-09-01",
+            "endDate": "2026-09-01"
+          }
+        },
+        {
+          "name": "fund_get_return_attribution",
+          "required": [
+            "windCode",
+            "benchmarkWindCode",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "windCode",
+            "benchmarkWindCode",
+            "startDate",
+            "endDate",
+            "modelType",
+            "cycle",
+            "marketIndex",
+            "riskRate",
+            "marketStyle",
+            "includeComponents"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "benchmarkWindCode": "000300.SH",
+            "startDate": "2025-09-01",
+            "endDate": "2026-09-01"
+          }
+        },
+        {
+          "name": "fund_get_selection_timing_analysis",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "year",
+            "date"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "000001.OF",
+            "year": "3"
+          },
+          "knownIssue": "仅部分基金有评价数据；被动指数/货币/未覆盖样本返回「Wind 数据源当前不可用，请稍后重试」（误导文案，重试无用）。已验证可用样本：000001.OF、005827.OF"
+        },
+        {
+          "name": "fund_get_asset_allocation",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_industry_allocation",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate",
+            "classificationType"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_bond_type_allocation",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_equity_holdings",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate",
+            "industryType"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_top_equity_holdings",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate",
+            "industryType"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_bond_holdings",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "000001.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_top_fund_holdings",
+          "required": [
+            "windCode",
+            "reportDate"
+          ],
+          "params": [
+            "windCode",
+            "reportDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "005220.OF",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_etf_pcf",
+          "required": [
+            "windCode",
+            "asOfDate"
+          ],
+          "params": [
+            "windCode",
+            "asOfDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510300.SH",
+            "asOfDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "fund_get_basic_info",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "includeFields",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.OF",
+              "000001.OF"
+            ]
+          }
+        },
+        {
+          "name": "fund_get_nav",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "asOfDate",
+            "includeFields",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.OF",
+              "000001.OF"
+            ],
+            "asOfDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "fund_get_purchase_redemption_status",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "includeFields",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.OF",
+              "000001.OF"
+            ]
+          }
+        },
+        {
+          "name": "fund_get_performance",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "includeFields",
+            "asOfDate",
+            "benchmarkWindCode",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.OF",
+              "000001.OF"
+            ],
+            "asOfDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "fund_get_listed_historical_price",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "includeFields",
+            "tradeDate",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.SH"
+            ],
+            "tradeDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "fund_get_size",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "includeFields",
+            "asOfDate",
+            "reportDate",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.OF",
+              "000001.OF"
+            ],
+            "asOfDate": "2026-09-03",
+            "reportDate": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_get_financials",
+          "required": [
+            "windCodes"
+          ],
+          "params": [
+            "windCodes",
+            "includeFields",
+            "reportPeriod",
+            "includeMetadata"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510300.OF",
+              "000001.OF"
+            ],
+            "reportPeriod": "2026-06-30"
+          }
+        },
+        {
+          "name": "fund_screener",
+          "required": [
+            "query"
+          ],
+          "params": [
+            "query"
+          ],
+          "verifiedSampleArgs": {
+            "query": "规模大于100亿的货币型基金"
+          }
+        }
+      ]
+    },
+    "vserver_edb_data": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_edb_data/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 3,
+      "paramCount": 12,
+      "tools": [
+        {
+          "name": "economic_search_indicator",
+          "required": [
+            "question"
+          ],
+          "params": [
+            "question"
+          ],
+          "verifiedSampleArgs": {
+            "question": "中国GDP相关指标"
+          }
+        },
+        {
+          "name": "economic_get_indicator_series",
+          "required": [
+            "metricCodes"
+          ],
+          "params": [
+            "metricCodes",
+            "startDate",
+            "endDate",
+            "observation"
+          ],
+          "verifiedSampleArgs": {
+            "metricCodes": "M5567876",
+            "observation": 4
+          }
+        },
+        {
+          "name": "economic_query_indicator_series",
+          "required": [
+            "question"
+          ],
+          "params": [
+            "question",
+            "startDate",
+            "endDate",
+            "observation",
+            "targetMagnitude",
+            "targetCurrency",
+            "targetFrequency"
+          ],
+          "verifiedSampleArgs": {
+            "question": "中国GDP现价当季值",
+            "observation": 4
+          }
+        }
+      ]
+    },
+    "vserver_futures_data": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_futures_data/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 9,
+      "paramCount": 26,
+      "tools": [
+        {
+          "name": "futures_get_warehouse_receipt_details",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "date"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "CU.SHF",
+            "date": "2026-09-03"
+          }
+        },
+        {
+          "name": "futures_get_warehouse_receipt",
+          "required": [
+            "type"
+          ],
+          "params": [
+            "type",
+            "windCodes",
+            "date"
+          ],
+          "verifiedSampleArgs": {
+            "type": "receipt",
+            "windCodes": [
+              "CU.SHF",
+              "AL.SHF"
+            ],
+            "date": "2026-09-03"
+          }
+        },
+        {
+          "name": "futures_get_related_securities",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "type"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "CU.SHF",
+            "type": [
+              "upstream"
+            ]
+          }
+        },
+        {
+          "name": "futures_get_contract_spec",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "fields"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "CU.SHF"
+          }
+        },
+        {
+          "name": "futures_get_basis",
+          "required": [],
+          "params": [
+            "windCodes",
+            "sector",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "CU.SHF"
+            ],
+            "startDate": "2026-08-01",
+            "endDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "futures_get_fund_flow",
+          "required": [
+            "date"
+          ],
+          "params": [
+            "date",
+            "windCode"
+          ],
+          "verifiedSampleArgs": {
+            "date": "2026-09-03",
+            "windCode": "CU.SHF"
+          }
+        },
+        {
+          "name": "futures_get_position_ranking",
+          "required": [
+            "type",
+            "windCode"
+          ],
+          "params": [
+            "type",
+            "windCode",
+            "date",
+            "limit"
+          ],
+          "verifiedSampleArgs": {
+            "type": 1,
+            "windCode": "CU.SHF",
+            "date": "2026-09-03",
+            "limit": 5
+          }
+        },
+        {
+          "name": "futures_get_research_opinion_stat",
+          "required": [
+            "windCode"
+          ],
+          "params": [
+            "windCode",
+            "date"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "CU.SHF",
+            "date": "2026-09-03"
+          }
+        },
+        {
+          "name": "futures_get_supply_demand",
+          "required": [
+            "windCode",
+            "type"
+          ],
+          "params": [
+            "windCode",
+            "startDate",
+            "endDate",
+            "type",
+            "includeHistory"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "CU.SHF",
+            "type": 4,
+            "startDate": "2026-01-01",
+            "endDate": "2026-09-03"
+          }
+        }
+      ]
+    },
+    "vserver_options_data": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_options_data/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 17,
+      "paramCount": 149,
+      "tools": [
+        {
+          "name": "options_get_listed_terms",
+          "required": [
+            "windCode",
+            "tradeDate"
+          ],
+          "params": [
+            "windCode",
+            "tradeDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510050.SH",
+            "tradeDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "options_get_term_metrics",
+          "required": [
+            "optionVarietyCode",
+            "tradeDate",
+            "expiryDate"
+          ],
+          "params": [
+            "optionVarietyCode",
+            "tradeDate",
+            "expiryDate",
+            "underlyingPrice",
+            "indicators",
+            "strikeLevels"
+          ],
+          "verifiedSampleArgs": {
+            "optionVarietyCode": "510050OP.SH",
+            "tradeDate": "2026-09-03",
+            "expiryDate": "2026-09-23",
+            "underlyingPrice": 3,
+            "strikeLevels": 2
+          }
+        },
+        {
+          "name": "options_get_contract_series",
+          "required": [
+            "optionContractCodes",
+            "indicators",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "optionContractCodes",
+            "indicators",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "optionContractCodes": [
+              "10010972.SH",
+              "10010981.SH"
+            ],
+            "indicators": [
+              "最新价",
+              "隐含波动率",
+              "delta"
+            ],
+            "startDate": "2026-08-20",
+            "endDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "options_get_variety_series",
+          "required": [
+            "windCodes",
+            "indicator",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "windCodes",
+            "indicator",
+            "startDate",
+            "endDate",
+            "tenor",
+            "moneyness",
+            "deltaLevel",
+            "windows"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510050.SH"
+            ],
+            "indicator": "pcr_volume",
+            "startDate": "2026-08-01",
+            "endDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "options_get_variety_stats",
+          "required": [
+            "windCodes",
+            "indicator",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "windCodes",
+            "indicator",
+            "startDate",
+            "endDate",
+            "tenor",
+            "moneyness",
+            "deltaLevel",
+            "windows"
+          ],
+          "verifiedSampleArgs": {
+            "windCodes": [
+              "510050.SH"
+            ],
+            "indicator": "hv",
+            "startDate": "2026-01-01",
+            "endDate": "2026-09-03",
+            "windows": "20"
+          }
+        },
+        {
+          "name": "options_calc_binary",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "payoffType",
+            "cashAmount",
+            "dayCount"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "optionType": "call",
+            "strikePrice": 3,
+            "expirationDate": "2026-12-23",
+            "valuationDate": "2026-09-03",
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01,
+            "payoffType": "cash",
+            "cashAmount": 100
+          }
+        },
+        {
+          "name": "options_calc_barrier",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "barrierLevel",
+            "barrierDirection",
+            "barrierType",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "barrierLevel",
+            "barrierDirection",
+            "barrierType",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "rebate",
+            "dayCount",
+            "monitoringType",
+            "monitoringInterval",
+            "pricingMethod"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "optionType": "call",
+            "strikePrice": 3,
+            "barrierLevel": 3.3,
+            "barrierDirection": "up",
+            "barrierType": "out",
+            "expirationDate": "2026-12-23",
+            "valuationDate": "2026-09-03",
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01,
+            "monitoringType": "discrete",
+            "monitoringInterval": 1,
+            "pricingMethod": "mc"
+          }
+        },
+        {
+          "name": "options_calc_asian",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "expirationDate",
+            "valuationDate",
+            "averagingStartDate",
+            "averagingEndDate",
+            "averagingPrice",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "expirationDate",
+            "valuationDate",
+            "averagingStartDate",
+            "averagingEndDate",
+            "averagingPrice",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "dayCount",
+            "observationFrequency",
+            "pricingMethod"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "optionType": "call",
+            "strikePrice": 3,
+            "expirationDate": "2026-12-23",
+            "valuationDate": "2026-09-03",
+            "averagingStartDate": "2026-09-03",
+            "averagingEndDate": "2026-12-23",
+            "averagingPrice": 3,
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01
+          }
+        },
+        {
+          "name": "options_calc_accumulator",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "productType",
+            "payoffType",
+            "strikePrice",
+            "barrierPrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "productType",
+            "payoffType",
+            "strikePrice",
+            "barrierPrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "leverageRatio",
+            "cashAmount",
+            "dayCount",
+            "observationFrequency",
+            "pricingMethod"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "productType": "accumulator",
+            "payoffType": "linear",
+            "strikePrice": 3,
+            "barrierPrice": 3.3,
+            "expirationDate": "2026-12-23",
+            "valuationDate": "2026-09-03",
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01
+          },
+          "knownIssue": "服务端不可用（13 次尝试、9 种参数变体全部返回「服务暂时不可用，请稍后重试」）"
+        },
+        {
+          "name": "options_calc_single_shark_fin",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "strikePrice",
+            "barrierPrice",
+            "barrierDirection",
+            "knockoutYield",
+            "floorYield",
+            "expirationDate",
+            "valuationDate",
+            "barrierStartDate",
+            "barrierEndDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "strikePrice",
+            "barrierPrice",
+            "barrierDirection",
+            "knockoutYield",
+            "floorYield",
+            "expirationDate",
+            "valuationDate",
+            "barrierStartDate",
+            "barrierEndDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "notionalPrincipal",
+            "participationRate",
+            "dayCount",
+            "trackingFrequency"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "strikePrice": 3,
+            "barrierPrice": 3.3,
+            "barrierDirection": "up",
+            "knockoutYield": 0.08,
+            "floorYield": 0.02,
+            "expirationDate": "2026-12-23",
+            "valuationDate": "2026-09-03",
+            "barrierStartDate": "2026-09-03",
+            "barrierEndDate": "2026-12-23",
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01
+          },
+          "knownIssue": "服务端不可用（12 次尝试全部失败）"
+        },
+        {
+          "name": "options_calc_autocall_snowball",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "coupon",
+            "knockInPrice",
+            "knockOutPrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "coupon",
+            "knockInPrice",
+            "knockOutPrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "nontional",
+            "dayCount",
+            "knockOutObserFreq",
+            "pricingMethod"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "coupon": 0.15,
+            "knockInPrice": 2.4,
+            "knockOutPrice": 3.15,
+            "expirationDate": "2027-09-03",
+            "valuationDate": "2026-09-03",
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01
+          }
+        },
+        {
+          "name": "options_get_volatility_surface",
+          "required": [
+            "windCode",
+            "time"
+          ],
+          "params": [
+            "windCode",
+            "time"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510050.SH",
+            "time": "2026-09-03 14:30"
+          }
+        },
+        {
+          "name": "options_calc_iv_cone",
+          "required": [
+            "windCode",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "windCode",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510050.SH",
+            "startDate": "2026-01-01",
+            "endDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "options_calc_hv_cone",
+          "required": [
+            "windCode",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "windCode",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510050.SH",
+            "startDate": "2026-01-01",
+            "endDate": "2026-09-03"
+          }
+        },
+        {
+          "name": "options_get_iv_term_structure",
+          "required": [
+            "windCode",
+            "moneyness",
+            "time"
+          ],
+          "params": [
+            "windCode",
+            "moneyness",
+            "time"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510050.SH",
+            "moneyness": 100,
+            "time": "2026-09-03 14:30"
+          }
+        },
+        {
+          "name": "options_calc_vanilla",
+          "required": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield"
+          ],
+          "params": [
+            "assetClass",
+            "spotPrice",
+            "optionType",
+            "strikePrice",
+            "expirationDate",
+            "valuationDate",
+            "volatility",
+            "riskFreeRate",
+            "dividendYield",
+            "exerciseStyle",
+            "pricingMethod",
+            "dayCount",
+            "timeSteps"
+          ],
+          "verifiedSampleArgs": {
+            "assetClass": "equity",
+            "spotPrice": 3,
+            "optionType": "call",
+            "strikePrice": 3,
+            "expirationDate": "2026-12-23",
+            "valuationDate": "2026-09-03",
+            "volatility": 0.2,
+            "riskFreeRate": 0.02,
+            "dividendYield": 0.01
+          }
+        },
+        {
+          "name": "options_get_sentiment_data",
+          "required": [
+            "windCode",
+            "startDate",
+            "endDate"
+          ],
+          "params": [
+            "windCode",
+            "startDate",
+            "endDate",
+            "termCount",
+            "strikeCount"
+          ],
+          "verifiedSampleArgs": {
+            "windCode": "510050.SH",
+            "startDate": "2026-08-01",
+            "endDate": "2026-09-03",
+            "termCount": 2,
+            "strikeCount": 3
+          }
+        }
+      ]
+    },
+    "vserver_company_data": {
+      "endpoint": "https://mcp.wind.com.cn/vserver_company_data/mcp/",
+      "serverInfo": {
+        "name": "wind-mcp-streamable-http-stateless",
+        "version": "1.25.0"
+      },
+      "toolCount": 54,
+      "paramCount": 127,
+      "tools": [
+        {
+          "name": "company_search_entity",
+          "required": [
+            "searchKey"
+          ],
+          "params": [
+            "searchKey"
+          ],
+          "verifiedSampleArgs": {
+            "searchKey": "恒大地产"
+          }
+        },
+        {
+          "name": "company_list_beneficial_owner",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_actual_controller",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_key_personnel",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "history"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_customer_info",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_tech_roster",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_controlled_entity",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_shareholder",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "history"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_trade_credit",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_tax_qual",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_ubo_related",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_traverse_equity",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_equity_change",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_contact",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_trademark",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "trademarkStatus"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_standard",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_change_record",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_bidding",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_annual_report",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_registration_info",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_tax_credit_rating",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_patent",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "patentType",
+            "lawStatus",
+            "history"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_investment",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "history"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_list_supplier",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_abnormal_operation",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_bankruptcy_reorg",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_court_announcements",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "timeFrom",
+            "timeTo",
+            "causeOfAction",
+            "role"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_court_sessions",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "timeFrom",
+            "timeTo",
+            "causeOfAction",
+            "role"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_default_info",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_disciplinary_list",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_discredit",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_enterprise_score",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_environment_penalty",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_equity_pledged",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_executed_persons",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_filing_info",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "timeFrom",
+            "timeTo",
+            "causeOfAction",
+            "role"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_final_case",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_financial_leasing",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_high_consumers",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_illegal_dishonesty",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_illegal_tax",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_judgments",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "timeFrom",
+            "timeTo",
+            "causeOfAction",
+            "role"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_judicial_sales",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_land_acquisition",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_legal_notice",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_liquidation",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_news_sentiment",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "tagCode",
+            "emotionId",
+            "newsPenetrateEnable",
+            "timeFrom",
+            "timeTo"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_owing_tax",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_penalty_info",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_share_lockup",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_simple_cancellation",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_tax_abnormal",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_valuation_inquiry",
+          "required": [
+            "companyKey"
+          ],
+          "params": [
+            "companyKey",
+            "startDate",
+            "endDate"
+          ],
+          "verifiedSampleArgs": {
+            "companyKey": "恒大地产集团有限公司"
+          }
+        },
+        {
+          "name": "company_get_biz_enum",
+          "required": [
+            "listType"
+          ],
+          "params": [
+            "listType",
+            "categoryName"
+          ],
+          "verifiedSampleArgs": {
+            "listType": 1
+          }
+        }
+      ]
+    }
+  }
+}
