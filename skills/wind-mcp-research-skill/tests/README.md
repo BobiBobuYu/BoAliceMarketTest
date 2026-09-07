@@ -31,7 +31,6 @@ node scripts/cli.mjs smoke futures        # 只冒烟一个 server
 
 ```bash
 node scripts/cli.mjs doctor          # 看 Key、7 个 server 连通性、注册表漂移、上次自更新状态
-node scripts/cli.mjs diff company    # 只看差异，不写文件
 node scripts/cli.mjs refresh company # 拉最新 schema 写回 registry.json 并重生成全部目录
 node tests/run-offline-tests.mjs     # 一致性测试会指出哪些样例因改名/改字段失效
 ```
