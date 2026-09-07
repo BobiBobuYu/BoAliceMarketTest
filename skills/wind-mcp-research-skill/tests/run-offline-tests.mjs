@@ -81,7 +81,7 @@ check('缺必填被拦截', () => {
 });
 
 check('类型不符被拦截', () => {
-  const e = validateParams(schemaOf('edb', 'economic_get_indicator_series'), { metricCodes: 'M1', observation: '5' });
+  const e = validateParams(schemaOf('edb', 'economic_get_indicator_series'), { metricCodes: 'M1', numOfObservation: '5' });
   eq(e?.code, 'PARAM_TYPE_ERROR');
 });
 
@@ -150,7 +150,7 @@ check('日期区间颠倒被拦截', () => {
 });
 
 check('互斥字段被拦截', () => {
-  const e = validateParams(schemaOf('edb', 'economic_get_indicator_series'), { metricCodes: 'M1', observation: 5, startDate: '2024-01-01' });
+  const e = validateParams(schemaOf('edb', 'economic_get_indicator_series'), { metricCodes: 'M1', numOfObservation: 5, startDate: '2024-01-01' });
   eq(e?.code, 'PARAM_VALIDATION_ERROR');
   assert(e.message.includes('互斥'), '应说明互斥');
 });
@@ -236,8 +236,8 @@ await checkAsync('--raw 保留原样输出并打 suspect_error 标记', async ()
 });
 
 await checkAsync('已知故障工具在错误信封里带 known_issue', async () => {
-  const sample = REG.servers.options.tools.options_calc_accumulator.sample;
-  const r = await runCli(['call', 'options', 'options_calc_accumulator', JSON.stringify(sample)], simpleHandler({ toolText: '服务暂时不可用，请稍后重试' }));
+  const sample = REG.servers.futures.tools.futures_get_supply_demand.sample;
+  const r = await runCli(['call', 'futures', 'futures_get_supply_demand', JSON.stringify(sample)], simpleHandler({ toolText: '服务暂时不可用，请稍后重试' }));
   assert(r.json.known_issue, '应带 known_issue');
 });
 
@@ -370,7 +370,7 @@ await checkAsync('find 宽泛关键词只对前几条给详情，其余只列名
 await checkAsync('每种错误码的信封都带可执行的 next', async () => {
   const cases = [
     [['call', 'company', 'company_get_judgments', '{"companyKey":"X","startDate":"2024-01-01"}'], 'PARAM_VALIDATION_ERROR'],
-    [['call', 'edb', 'economic_get_indicator_series', '{"metricCodes":"M1","observation":"5"}'], 'PARAM_TYPE_ERROR'],
+    [['call', 'edb', 'economic_get_indicator_series', '{"metricCodes":"M1","numOfObservation":"5"}'], 'PARAM_TYPE_ERROR'],
   ];
   for (const [argv, code] of cases) {
     const r = await runCli(argv, simpleHandler({}));
@@ -421,11 +421,11 @@ check('运行时只依赖 cli.mjs，构建时代码不进取数路径', () => {
 });
 
 // ---------- 4. 注册表与文档一致性 ----------
-check('7 个 server / 132 个工具齐全', () => {
+check('7 个 server / 123 个工具齐全', () => {
   const aliases = Object.keys(REG.servers);
   eq(aliases.length, 7, 'server 数量');
   const total = aliases.reduce((n, a) => n + Object.keys(REG.servers[a].tools).length, 0);
-  assert(total >= 130, `工具总数应不少于 130，实际 ${total}`);
+  assert(total >= 121, `工具总数应不少于 121，实际 ${total}`);
 });
 
 check('每个工具都有实测样例入参，且样例本身能通过校验', () => {

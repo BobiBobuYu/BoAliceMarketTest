@@ -245,7 +245,97 @@ await check('并发调用互不串扰', async () => {
   results.forEach((r, i) => eq(JSON.parse(r.text).echo, codes[i], `第 ${i} 条串扰`));
 });
 
-// ---------- 7. [live] 真实后端边界 ----------
+// ---------- 6.5 类型与枚举的进一步边界 ----------
+await check('integer 字段传浮点数被拦截', async () => {
+  const s2 = REG.servers.futures.tools.futures_get_position_ranking.inputSchema;
+  const limitField = Object.entries(s2.properties).find(([, p]) => p.type === 'integer');
+  assert(limitField, 'futures_get_position_ranking 应有 integer 字段');
+  const e2 = validateParams(s2, { [limitField[0]]: 3.5 });
+  assert(e2 && (e2.code === 'PARAM_TYPE_ERROR' || e2.code === 'PARAM_VALIDATION_ERROR'), `${limitField[0]} 传浮点应被本地拦截，实际 ${e2?.code ?? '放行'}`);
+});
+
+await check('integer 字段传数字字符串被拦截', async () => {
+  const s2 = REG.servers.futures.tools.futures_get_position_ranking.inputSchema;
+  const limitField = Object.entries(s2.properties).find(([, p]) => p.type === 'integer');
+  const e2 = validateParams(s2, { [limitField[0]]: '5' });
+  assert(e2 && (e2.code === 'PARAM_TYPE_ERROR' || e2.code === 'PARAM_VALIDATION_ERROR'), `${limitField[0]} 传 "5" 应被本地拦截，实际 ${e2?.code ?? '放行'}`);
+});
+
+await check('enum 的中文别名等价放行', async () => {
+  const r = await runCli(['call', 'futures', 'futures_get_warehouse_receipt', '{"windCodes":["CU.SHF"],"type":"仓单"}'], simpleHandler({ toolText: '{"ok":1}' }));
+  assert(r.json.cli_meta, `中文别名「仓单」应与系统值等价放行，实际 ${r.text.slice(0, 160)}`);
+  const call = r.calls.find((c) => c.body.method === 'tools/call');
+  eq(call.body.params.arguments.type, '仓单', '别名应原样送达后端');
+});
+
+await check('enum 别名也不允许大小写变体', async () => {
+  const s = REG.servers.futures.tools.futures_get_warehouse_receipt.inputSchema;
+  if (!s.properties.type) return;
+  const e = validateParams(s, { windCodes: ['CU.SHF'], type: 'Receipt' });
+  eq(e?.code, 'PARAM_VALIDATION_ERROR', 'Receipt（首字母大写）应被拦');
+});
+
+await check('日期字段传非日期字符串被拦截', async () => {
+  const s = REG.servers.futures.tools.futures_get_supply_demand.inputSchema;
+  const e = validateParams(s, { windCode: 'CU.SHF', startDate: '不是日期', endDate: '2026-01-01' });
+  assert(e, '应拦截非日期字符串');
+  assert(e.code === 'PARAM_VALIDATION_ERROR' || e.code === 'PARAM_TYPE_ERROR', `应给出参数类错误，实际 ${e.code}`);
+});
+
+// ---------- 6.6 find / describe 命令边界 ----------
+await check('find 空关键词给出用法而不是崩溃', async () => {
+  const r = await runCli(['find']);
+  assert(r.thrown || r.json, '应有明确回执');
+});
+
+await check('find 关键词含正则元字符按字面匹配', async () => {
+  const r = await runCli(['find', '.*']);
+  assert(r.json && Array.isArray(r.json.hits), '应返回 hits 数组而不是正则报错');
+});
+
+await check('find 中文关键词能命中', async () => {
+  const r = await runCli(['find', '净值']);
+  assert(r.json.hits.length >= 1, '「净值」至少应命中 fund_get_nav');
+  assert(r.json.hits.some((h) => h.tool === 'fund_get_nav'), '应命中 fund_get_nav');
+});
+
+await check('describe 未知工具报 ROUTE_ERROR 并给近似名', async () => {
+  const r = await runCli(['describe', 'stock', 'stock_get_company_profil']);
+  eq(r.thrown?.code, 'ROUTE_ERROR');
+  assert(r.thrown.message.includes('stock_get_company_profile'), '应给出近似名');
+});
+
+await check('describe 指定参数名只返回那几个参数', async () => {
+  const r = await runCli(['describe', 'stock', 'stock_get_company_profile', 'windCode']);
+  assert(Array.isArray(r.json.params) && r.json.params.length === 1 && r.json.params[0].name === 'windCode', '只应返回 windCode');
+});
+
+// ---------- 6.7 传输层更多畸形响应 ----------
+await check('HTTP 200 但 body 是网关 HTML 页报错误而不是解析崩溃', async () => {
+  const r = await runCli(['call', 'edb', 'economic_search_indicator', '{"question":"GDP"}'], () => ({ text: '<html><body>504 Gateway Time-out</body></html>' }));
+  assert(r.thrown || r.json?.ok === false, '应报错而不是静默成功');
+});
+
+await check('JSON-RPC result 缺 content 字段按协议异常处理', async () => {
+  const r = await runCli(['call', 'edb', 'economic_search_indicator', '{"question":"GDP"}'], (body) => (
+    body.method === 'initialize' ? { json: { jsonrpc: '2.0', id: body.id, result: {} } } : { json: { jsonrpc: '2.0', id: body.id, result: {} } }
+  ));
+  assert(r.thrown || r.json?.ok === false, '缺 content 不应伪装成成功');
+});
+
+await check('content[0] 缺 text 字段按业务错误处理', async () => {
+  const r = await runCli(['call', 'edb', 'economic_search_indicator', '{"question":"GDP"}'], (body) => (
+    body.method === 'initialize' ? { json: { jsonrpc: '2.0', id: body.id, result: {} } } : { json: { jsonrpc: '2.0', id: body.id, result: { content: [{ type: 'text' }] } } }
+  ));
+  assert(r.thrown || r.json?.ok === false, '缺 text 不应伪装成成功');
+});
+
+await check('参数 JSON 带 BOM 或前后空白仍可解析', async () => {
+  const r = await runCli(['call', 'stock', 'stock_get_company_profile', '  {"windCode":"600519.SH"}\n'], simpleHandler({ toolText: '{"ok":1}' }));
+  assert(r.json.cli_meta, `前后空白不应影响解析，实际 ${r.text.slice(0, 120)}`);
+});
+
+
 if (LIVE) {
   await check('[live] 非法证券代码：要么报错，要么必须能从返回体看出认错了标的', async () => {
     const r = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"999999.XX"}']);
@@ -266,10 +356,6 @@ if (LIVE) {
     notes.push(`[live] 无失信记录时的回执形态：${r.json?.ok === false ? 'backend_error: ' + r.json.message.slice(0, 80) : '成功信封，text 前 80 字：' + (r.json?.content?.[0]?.text || '').slice(0, 80)}`);
   });
 
-  await check('[live] 日期区间颠倒时后端与本地的判定一致', async () => {
-    const r = await runCli(['call', 'company', 'company_get_judgments', '{"companyKey":"恒大地产集团有限公司","timeFrom":"2026-01-01","timeTo":"2024-01-01"}']);
-    eq(r.json.code, 'PARAM_VALIDATION_ERROR', '本地应先拦下');
-  });
 }
 
 rmSync(TMP, { recursive: true, force: true });

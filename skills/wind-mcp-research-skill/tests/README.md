@@ -7,7 +7,7 @@ export WIND_SKILL_NO_UPDATE=1        # 否则每次 call 成功都会在后台�
 node tests/run-offline-tests.mjs          # 契约测试：不发网络，任何环境都能跑
 node tests/run-boundary-tests.mjs         # 边界测试：畸形输入 / 协议异常 / 极值入参，默认离线
 node tests/run-boundary-tests.mjs --live  # 额外跑真实后端的三组边界（消耗积分）
-node scripts/cli.mjs smoke                # 全量冒烟：用注册表里的实测样例逐个调 132 个工具
+node scripts/cli.mjs smoke                # 全量冒烟：用注册表里的实测样例逐个调 123 个工具
 node scripts/cli.mjs smoke futures        # 只冒烟一个 server
 ```
 
@@ -17,7 +17,7 @@ node scripts/cli.mjs smoke futures        # 只冒烟一个 server
 | --- | --- | --- |
 | `run-offline-tests.mjs` | 参数校验规则、信封形态、SSE/JSON 解析、业务错误嗅探、`find` 排序与零命中语义、自动更新开关、**工具目录的体量上限**、注册表与文档一致性 | 每次改 `scripts/` 或 `references/` 之后 |
 | `run-boundary-tests.mjs` | 空/畸形/超长入参、`__proto__`、路径穿越、HTTP 401/429/500、半截 SSE、并发串扰、数组与日期极值 | 改传输层或校验层之后 |
-| `cli.mjs smoke` | 132 个工具逐个真实调用 | 改 `annotations.json` 的样例之后，或怀疑后端有变时 |
+| `cli.mjs smoke` | 123 个工具逐个真实调用 | 改 `annotations.json` 的样例之后，或怀疑后端有变时 |
 
 离线两层用 `tests/mock-fetch.mjs` 顶掉 `globalThis.fetch`，进程内直接调用 `scripts/cli.mjs` 导出的 `main()`，因此断言的是**用户实际看到的 stdout 信封**，不是内部函数返回值。
 

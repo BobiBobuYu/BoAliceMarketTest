@@ -19,9 +19,9 @@
 
 | 工具 | 用途 | 别选错（【边界】首句） | 入参（加粗=必填） | 可直接跑的样例 |
 | --- | --- | --- | --- | --- |
-| `economic_search_indicator` | 按自然语言从万得宏观经济数据库EDB检索并匹配经济指标，用于发现指标和确认统计口径。 | 只做指标发现与口径确认，不提取具体数值 | **question** | `{"question":"中国GDP相关指标"}` |
-| `economic_get_indicator_series` | 按一个或多个万得宏观经济数据库EDB指标代码获取宏观经济指标元信息和原始口径时间序列。 | 只接受已确认的指标代码并保留原始数量级、频率和币种，不做对齐换算 | **metricCodes**, startDate, endDate, observation | `{"metricCodes":"M5567876","observation":4}` |
-| `economic_query_indicator_series` | 按自然语言从万得宏观经济数据库EDB获取宏观经济指标元信息和时间序列；比较任务需要统一口径时，可转换并对齐数量级、频率和币种。 | 不回答概念、定义 | **question**, startDate, endDate, observation, targetMagnitude, targetCurrency, targetFrequency | `{"question":"中国GDP现价当季值","observation":4}` |
+| `economic_search_indicator` | 从万得 EDB 宏观经济数据库 1,500 万+全球宏观经济指标中，按自然语言检索并匹配宏观、行业及区域、微观企业经济指标，用于指标发现、口径确认和标准指标代码定位。 | 指标代码未知时，优先调用本工具确认指标，再调用 economic_get_indicator_series 获取… | **question** | `{"question":"中国GDP相关指标"}` |
+| `economic_get_indicator_series` | 按一个或多个已确认的万得 EDB 指标代码，从 1,500 万+全球经济指标库中获取指标元信息及原始统计口径时间序列，是 EDB 的标准取数工具。 | 仅接受已确认的指标代码，不负责从模糊自然语言中识别指标 | **metricCodes**, startDate, endDate, numOfObservation | `{"metricCodes":"M5567876","observation":4}` |
+| `economic_query_indicator_series` | 面向探索式宏观研究，按自然语言从万得 EDB 1,500 万+全球经济指标中发现相关指标并获取时间序列；在比较场景下，可对数量级、频率和币种进行转换与对齐。 | 本工具主要用于探索发现，不作为标准精准取数入口 | **question**, startDate, endDate, observation, targetMagnitude, targetCurrency, targetFrequency | `{"question":"中国GDP现价当季值","observation":4}` |
 
 ## 已知故障
 

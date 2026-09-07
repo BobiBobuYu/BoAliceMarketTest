@@ -479,7 +479,7 @@
         "economic_get_indicator_series": {
           "sample": {
             "metricCodes": "M5567876",
-            "observation": 4
+            "numOfObservation": 4
           }
         },
         "economic_query_indicator_series": {
@@ -533,12 +533,6 @@
         "`futures_get_basis` 的**板块查询只有截面、没有序列**：传 `sector` + 日期区间会被静默降级成末日单日数据；要历史序列必须改用 `windCodes` 逐品种查。"
       ],
       "tools": {
-        "futures_get_warehouse_receipt_details": {
-          "sample": {
-            "windCode": "CU.SHF",
-            "date": "2026-09-03"
-          }
-        },
         "futures_get_warehouse_receipt": {
           "sample": {
             "type": "receipt",
@@ -549,14 +543,6 @@
             "date": "2026-09-03"
           },
           "knownIssue": "只管仓单与交割的汇总口径。用户问「某品种库存多少」时应走 `futures_get_supply_demand` 的 `type=4`（库存/仓单/港口库存），不要用本工具。"
-        },
-        "futures_get_related_securities": {
-          "sample": {
-            "windCode": "CU.SHF",
-            "type": [
-              "upstream"
-            ]
-          }
         },
         "futures_get_contract_spec": {
           "sample": {
@@ -585,12 +571,6 @@
             "windCode": "CU.SHF",
             "date": "2026-09-03",
             "limit": 5
-          }
-        },
-        "futures_get_research_opinion_stat": {
-          "sample": {
-            "windCode": "CU.SHF",
-            "date": "2026-09-03"
           }
         },
         "futures_get_supply_demand": {
@@ -709,90 +689,6 @@
             "cashAmount": 100
           }
         },
-        "options_calc_barrier": {
-          "sample": {
-            "assetClass": "equity",
-            "spotPrice": 3,
-            "optionType": "call",
-            "strikePrice": 3,
-            "barrierLevel": 3.3,
-            "barrierDirection": "up",
-            "barrierType": "out",
-            "expirationDate": "2026-12-23",
-            "valuationDate": "2026-09-03",
-            "volatility": 0.2,
-            "riskFreeRate": 0.02,
-            "dividendYield": 0.01,
-            "monitoringType": "discrete",
-            "monitoringInterval": 1,
-            "pricingMethod": "mc"
-          }
-        },
-        "options_calc_asian": {
-          "sample": {
-            "assetClass": "equity",
-            "spotPrice": 3,
-            "optionType": "call",
-            "strikePrice": 3,
-            "expirationDate": "2026-12-23",
-            "valuationDate": "2026-09-03",
-            "averagingStartDate": "2026-09-03",
-            "averagingEndDate": "2026-12-23",
-            "averagingPrice": 3,
-            "volatility": 0.2,
-            "riskFreeRate": 0.02,
-            "dividendYield": 0.01
-          }
-        },
-        "options_calc_accumulator": {
-          "sample": {
-            "assetClass": "equity",
-            "spotPrice": 3,
-            "productType": "accumulator",
-            "payoffType": "linear",
-            "strikePrice": 3,
-            "barrierPrice": 3.3,
-            "expirationDate": "2026-12-23",
-            "valuationDate": "2026-09-03",
-            "volatility": 0.2,
-            "riskFreeRate": 0.02,
-            "dividendYield": 0.01
-          },
-          "knownIssue": "服务端不可用（13 次尝试、9 种参数变体全部返回「服务暂时不可用，请稍后重试」）"
-        },
-        "options_calc_single_shark_fin": {
-          "sample": {
-            "assetClass": "equity",
-            "spotPrice": 3,
-            "strikePrice": 3,
-            "barrierPrice": 3.3,
-            "barrierDirection": "up",
-            "knockoutYield": 0.08,
-            "floorYield": 0.02,
-            "expirationDate": "2026-12-23",
-            "valuationDate": "2026-09-03",
-            "barrierStartDate": "2026-09-03",
-            "barrierEndDate": "2026-12-23",
-            "volatility": 0.2,
-            "riskFreeRate": 0.02,
-            "dividendYield": 0.01
-          },
-          "knownIssue": "服务端不可用（12 次尝试全部失败）"
-        },
-        "options_calc_autocall_snowball": {
-          "sample": {
-            "assetClass": "equity",
-            "spotPrice": 3,
-            "coupon": 0.15,
-            "knockInPrice": 2.4,
-            "knockOutPrice": 3.15,
-            "expirationDate": "2027-09-03",
-            "valuationDate": "2026-09-03",
-            "volatility": 0.2,
-            "riskFreeRate": 0.02,
-            "dividendYield": 0.01
-          }
-        },
         "options_get_volatility_surface": {
           "sample": {
             "windCode": "510050.SH",
@@ -800,13 +696,6 @@
           }
         },
         "options_calc_iv_cone": {
-          "sample": {
-            "windCode": "510050.SH",
-            "startDate": "2026-01-01",
-            "endDate": "2026-09-03"
-          }
-        },
-        "options_calc_hv_cone": {
           "sample": {
             "windCode": "510050.SH",
             "startDate": "2026-01-01",

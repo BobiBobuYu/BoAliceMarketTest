@@ -2,7 +2,7 @@
 
 > **这是目录，不是完整契约。** 表里的样例可以照抄直接跑；要改参数、要看【边界】、要看枚举取值，
 > 先跑 `node scripts/cli.mjs describe options <tool>`（离线、不花积分、单个工具约 1 千字）。
-> 本文件由 `scripts/registry.json` 生成（vserver_options_data，17 个工具 / 149 个参数），不要手改。
+> 本文件由 `scripts/registry.json` 生成（vserver_options_data，11 个工具 / 66 个参数），不要手改。
 
 **覆盖**：场内期权的期限结构、期权链截面、合约与品种时间序列、波动率曲面与期限结构、隐含/历史波动率锥、多空情绪；以及场外结构化产品的定价计算器。
 
@@ -24,24 +24,11 @@
 | `options_get_variety_series` | 按一个或多个期权标的、单一指标和历史区间查询品种维度时间序列，覆盖隐含波动率、历史波动率、PCR 和偏度等指标。 | 只处理品种层面的聚合序列，不展开单个合约量价或期权链档位 | **windCodes**, **indicator**, **startDate**, **endDate**, tenor, moneyness, deltaLevel, windows | `{"windCodes":["510050.SH"],"indicator":"pcr_volume","startDate":"2026-08-01","endDate":"2026-09-03"}` |
 | `options_get_variety_stats` | 按一个或多个期权标的、单一指标和历史区间计算品种指标的分布统计，返回当前值、均值、极值、中位数和分位数。 | 统计结果应与相同标的、指标、期限、窗口和区间的原始序列勾稽，不能替代逐日序列或合约明细 | **windCodes**, **indicator**, **startDate**, **endDate**, tenor, moneyness, deltaLevel, windows | `{"windCodes":["510050.SH"],"indicator":"hv","startDate":"2026-01-01","endDate":"2026-09-03","windows":"20"}` |
 | `options_calc_binary` | 计算现金或资产兑付型二元期权价格，到期时按标的价格是否满足条件支付固定金额或标的资产。 | 依赖调用方明确提供现价、行权价、到期日、波动率和利率等参数，不负责补查市场数据 | **assetClass**, **spotPrice**, **optionType**, **strikePrice**, **expirationDate**, **valuationDate**, **volatility**, **riskFreeRate**, **dividendYield**, payoffType, cashAmount, dayCount | 参数较多，见 `describe` |
-| `options_calc_barrier` | 计算单向障碍期权价格，支持向上或向下障碍、敲入或敲出、返还金以及离散或连续观察。 | 只做给定条款和市场参数下的数值计算，不查询期权链或历史行情 | **assetClass**, **spotPrice**, **optionType**, **strikePrice**, **barrierLevel**, **barrierDirection**, **barrierType**, **expirationDate**, **valuationDate**, **volatility**, **riskFreeRate**, **dividendYield**, rebate, dayCount, monitoringType, monitoringInterval, pricingMethod | 参数较多，见 `describe` |
-| `options_calc_asian` | 计算亚式期权价格，将观察期内的平均价格纳入现金流并返回期权价值和定价敏感度。 | 观察日期、平均价格口径和频率必须明确 | **assetClass**, **spotPrice**, **optionType**, **strikePrice**, **expirationDate**, **valuationDate**, **averagingStartDate**, **averagingEndDate**, **averagingPrice**, **volatility**, **riskFreeRate**, **dividendYield**, dayCount, observationFrequency, pricingMethod | 参数较多，见 `describe` |
-| `options_calc_accumulator` | 计算累计期权价格，支持累购与累沽、线性或固定赔付，以及障碍价格和杠杆率等产品条款。 | 产品条款和市场参数必须由调用方明确提供，本工具不自动补查行情或推断杠杆与赔付 | **assetClass**, **spotPrice**, **productType**, **payoffType**, **strikePrice**, **barrierPrice**, **expirationDate**, **valuationDate**, **volatility**, **riskFreeRate**, **dividendYield**, leverageRatio, cashAmount, dayCount, observationFrequency, pricingMethod | 参数较多，见 `describe` |
-| `options_calc_single_shark_fin` | 计算单向鲨鱼鳍期权价格，使用参与率、障碍价格、敲出收益率和保底收益率描述产品现金流。 | 产品现金流条款和市场参数必须明确，本工具不查询标的行情或期权链 | **assetClass**, **spotPrice**, **strikePrice**, **barrierPrice**, **barrierDirection**, **knockoutYield**, **floorYield**, **expirationDate**, **valuationDate**, **barrierStartDate**, **barrierEndDate**, **volatility**, **riskFreeRate**, **dividendYield**, notionalPrincipal, participationRate, dayCount, trackingFrequency | 参数较多，见 `describe` |
-| `options_calc_autocall_snowball` | 计算自动赎回 Snowball 产品价格，按敲入、敲出、票息、名义本金和观察频率等条款返回数值结果。 | 产品条款、标的现价和市场参数必须明确，本工具不负责查询或补全行情 | **assetClass**, **spotPrice**, **coupon**, **knockInPrice**, **knockOutPrice**, **expirationDate**, **valuationDate**, **volatility**, **riskFreeRate**, **dividendYield**, nontional, dayCount, knockOutObserFreq, pricingMethod | 参数较多，见 `describe` |
 | `options_get_volatility_surface` | 按期权标的和参考时间查询波动率曲面，返回不同标准期限和价值状态下的远期价格、行权价及波动率节点。 | 期限插值锚点不等同真实挂牌到期日 | **windCode**, **time** | `{"windCode":"510050.SH","time":"2026-09-03 14:30"}` |
 | `options_calc_iv_cone` | 计算标的隐含波动率锥，按不同期限统计历史隐含波动率的最小值、分位数、均值、最大值、当前值及当前分位。 | 统计结果应与相同标的、期限、日期区间和单位口径的隐波序列及当前曲面节点交叉核对 | **windCode**, **startDate**, **endDate** | `{"windCode":"510050.SH","startDate":"2026-01-01","endDate":"2026-09-03"}` |
-| `options_calc_hv_cone` | 按指定标的和历史区间计算历史波动率锥，返回历史波动率分布及关键分位数统计。 | 历史波动率与隐含波动率属于不同口径，不能相互替代 | **windCode**, **startDate**, **endDate** | `{"windCode":"510050.SH","startDate":"2026-01-01","endDate":"2026-09-03"}` |
 | `options_get_iv_term_structure` | 按标的、价值状态和查询日期获取隐含波动率期限结构，返回不同期限标签对应的波动率。 | 这是单一价值状态和日期的期限切片，不替代多价值状态曲面、历史分布或真实存续期限 | **windCode**, **moneyness**, **time** | `{"windCode":"510050.SH","moneyness":100,"time":"2026-09-03 14:30"}` |
 | `options_calc_vanilla` | 计算普通香草期权价格，支持欧式或美式看涨、看跌期权，并按指定或匹配模型返回定价结果。 | 依赖调用方提供已确认的市场参数，不查询现价、波动率或利率 | **assetClass**, **spotPrice**, **optionType**, **strikePrice**, **expirationDate**, **valuationDate**, **volatility**, **riskFreeRate**, **dividendYield**, exerciseStyle, pricingMethod, dayCount, timeSteps | 参数较多，见 `describe` |
 | `options_get_sentiment_data` | 根据 ETF、股票或期货基础代码与时间区间，查询该品种期权的综合多空情绪数据，覆盖品种级时序、期限级时序、统计特征快照、行权价分布和期限结构对比；支持按期限数量和行权价数量控制返回范围。 | 必须提供可识别的期权标的代码或名称以及完整起止日期 | **windCode**, **startDate**, **endDate**, termCount, strikeCount | `{"windCode":"510050.SH","startDate":"2026-08-01","endDate":"2026-09-03","termCount":2,"strikeCount":3}` |
-
-## 已知故障
-
-| 工具 | 问题 |
-| --- | --- |
-| `options_calc_accumulator` | 服务端不可用（13 次尝试、9 种参数变体全部返回「服务暂时不可用，请稍后重试」） |
-| `options_calc_single_shark_fin` | 服务端不可用（12 次尝试全部失败） |
 
 ## 本 server 最容易选错的
 
