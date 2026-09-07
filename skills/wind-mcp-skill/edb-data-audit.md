@@ -96,3 +96,52 @@
 | P2 | 返回日期格式统一为 `YYYY-MM-DD`，与入参一致 |
 | P2 | `targetFrequency` 补文档化英文值，或只收中文 |
 | P3 | 截断改为结构化字段（`hasMore` / `nextCursor`） |
+
+---
+
+> 逐工具的边界 / 入参 / 故意错误 / 工具协同专项测试见 [`test-report-edb-data.md`](test-report-edb-data.md)。
+
+## 描述正确性复核（2026-09-07）
+
+3 个工具全部实调，比对 `description` 与真实返回。**工具已从 `macro_*` 改名为 `economic_*`**（09-04 记录的名称全部失效）。
+
+### ① 同义参数两个名字：`numOfObservation` vs `observation`
+
+| 工具 | 期数参数名 |
+|---|---|
+| `economic_get_indicator_series` | **`numOfObservation`** |
+| `economic_query_indicator_series` | **`observation`** |
+
+09-04 时两者都叫 `observation`；本轮 `get_*` 改名为 `numOfObservation`，`query_*` 未改。传旧名 `observation` 给 `get_*` 会被**静默忽略**并返回默认区间：
+
+```
+{"metricCodes":"M5567876","observation":4}        → 10 期（参数被吞）
+{"metricCodes":"M5567876","numOfObservation":4}   → 4 期 ✅
+```
+
+### ② 「未指定范围时获取近 2 年数据」与实测不符
+
+`economic_get_indicator_series`【适用场景】声称默认近 2 年。实测（不传任何区间参数）：
+
+| 指标 | 频率 | 实际返回 | 覆盖区间 |
+|---|---|---|---|
+| `M5567876` 中国:GDP:现价:当季值 | 季 | 10 期 | 2024-03-31 → 2026-06-30（约 2.5 年） |
+| `M0000612` 中国:CPI:当月同比 | 月 | **9 期** | 2025-11-30 → 2026-07-31（**不到 1 年**，复现 2/2） |
+
+默认行为更接近「近 10 期」而非「近 2 年」。另外多代码同查时窗口会对齐到最低频指标——`M0000612,M5567876` 同查，月频指标从 9 期变成 **29 期**（2024-03-31 起）——描述只在 `numOfObservation` 条目下提到对齐，未说明默认区间也会对齐。
+
+### ③ 描述与实际一致的部分 ✅
+
+- `economic_search_indicator`【返回】「只返回元信息不返回数值」——实测返回 `{code,name,unit,source,magnitude,currency,updateDate,freq}`，确实无时间序列 ✅
+- `economic_query_indicator_series` 的 `targetMagnitude`/`targetCurrency`/`targetFrequency` 三个枚举齐全、语义准确 ✅
+- 三个工具的【边界】互相指引的工具名全部存在且正确 ✅
+- 无匹配时返回纯文本「没有搜索到指标，<问句>」，与描述吻合（但 `isError=false`）
+
+### 建议
+
+| P | 动作 |
+|---|---|
+| **P0** | 统一期数参数名（`numOfObservation` / `observation` 二选一），或让 `get_*` 同时接受两者 |
+| **P1** | 未知参数应报错而非静默忽略——当前传错名会拿到默认区间且毫无提示 |
+| **P1** | 修正「默认近 2 年」的描述：实测月频仅 9 期。要么改文案为「近 10 期」，要么让后端真的按 2 年取 |
+| P2 | 说明多代码同查时默认区间也会对齐到最低频指标 |

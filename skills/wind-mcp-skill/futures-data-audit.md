@@ -130,3 +130,100 @@ Agent 按描述会拒绝把用户的「上游」直接传入、额外做一次�
 | P2 | `type` 按语义拆名：`dataType` / `chainSegment` / `rankType` / `fundamentalType` |
 | P2 | `basis` 的「成对提供」和「windCodes 与 sector 至少一个」写进 schema |
 | P3 | `windCode` / `windCodes` 统一（或全部支持数组）；`fund_flow` 的 `all` 改用独立参数 |
+
+---
+
+> 逐工具的边界 / 入参 / 故意错误 / 工具协同专项测试见 [`test-report-futures-data.md`](test-report-futures-data.md)。
+
+## 描述正确性复核（2026-09-07）
+
+线上工具从 9 个变为 **7 个**，7 个全部实调。
+
+### ① 工具集又变了
+
+| 变动 | 工具 |
+|---|---|
+| 下线 | `futures_get_warehouse_receipt_details`、`futures_get_related_securities`、`futures_get_research_opinion_stat` |
+| 新增 | `futures_get_research_opinion`（品种研报观点聚合，返回 `summary{bullish_count,bearish_count,neutral_count,wind_score,core_summary}` + `opinions[]` 逐篇明细，与描述吻合 ✅） |
+
+### ② P0：3 个工具的 `type` 参数从 schema 消失了，但描述和后端都还在用
+
+这是本轮最严重的问题——**描述承诺的能力，schema 里没有对应入参，后端却仍然支持**。
+
+#### `futures_get_position_ranking`（影响最大）
+
+> 【功能】按品种和交易日查询交易所公开席位的**九类**排名，涵盖持仓、增减仓和成交量排名。
+> 【适用场景】查看**多头或空头**席位；查看**净多或净空**排名；查看**增仓或减仓**排名；查看**成交量**席位排名。
+
+schema 只有 `windCode` / `date` / `limit`，**没有任何选择排名类型的参数**。但后端仍接受未声明的 `type`：
+
+```
+{"windCode":"CU.SHF","date":"2026-09-03","limit":3}          → queryContext.type=1, typeName="多头持仓排名"
+{"type":2,"windCode":"CU.SHF","date":"2026-09-03","limit":3} → queryContext.type=2, typeName="空头持仓排名"
+```
+
+**只按 schema 调用，九类排名里只能拿到一类，而且返回里虽然回显了 `typeName` 却没人会去看——调用方以为拿到的是"排名"，实际只是多头持仓排名。**
+
+#### `futures_get_supply_demand`
+
+> 【功能】按期货品种和**基本面类型**查询…　【适用场景】查看供需平衡表；查询供应或产量；查询需求或消费；查询库存或仓单
+
+schema 同样没有类型参数。后端不仅接受 `type`，还会正式校验它：
+
+| type | queryContext.type | 指标数（CU.SHF, 2026-08-01~09-03） |
+|---|---|---|
+| 不传 | 全部 | 全量 |
+| 1 | 供需平衡 | 13 |
+| 2 | 供应分析 | 4 |
+| 3 | 需求分析 | 4 |
+| 4 | 库存分析 | 5 |
+| 5 | ❌ `type 必须为 0、1、2、3、4` | — |
+
+后端能报出「必须为 0、1、2、3、4」，说明这是被正式校验的参数，只是没写进 schema。影响小于 position_ranking（不传时是"全部"）。
+
+#### `futures_get_warehouse_receipt`
+
+> 【功能】按**业务类型**、期货品种代码及日期查询…
+
+schema 只声明 `windCodes` + `date`。后端接受 `type`，且**行为和返回信封都随之变化**：
+
+schema 只声明 `windCodes` + `date`，但后端仍接受已下线的 `type`，且**行为和返回信封都随之变化**：
+
+| 入参 | 返回信封 | datatype |
+|---|---|---|
+| `{type:"receipt", windCodes:[...], date}` | 裸数组 `[{fields,rows}]` | 仅仓单 |
+| `{windCodes:["CU.SHF","AL.SHF"], date}` | `{"data":{"code":200,"message":"success","data":[…]},"error":null}` | 仓单 + 仓单明细 |
+| `{}`（不传 windCodes） | 同上带信封 | 交割量 |
+
+描述只笼统写「交割返回…；仓单返回…」，既没说明 datatype 组合取决于入参，也没说明信封会变。而 `code:200` / `message:"success"` 这层 HTTP 式包装属于内部实现外泄。
+
+**这三个 `type` 应当写回 schema，否则描述里的「九类排名」「基本面类型」「业务类型」全是无法兑现的承诺。**
+
+### ③ 返回信封在 server 内部不统一
+
+| 工具 | 顶层结构 |
+|---|---|
+| `futures_get_basis` | 裸对象 `{fields,rows,queryDataNote,Wind代码,品种名称}` |
+| `futures_get_contract_spec` | 裸数组 `[{fields,rows}]` |
+| `futures_get_fund_flow` | 裸数组 `[{requestTradeDate,resolvedTradeDate,…}]` |
+| `futures_get_position_ranking` | 裸数组 `[{queryContext,fields,rows}]` |
+| `futures_get_supply_demand` | 裸数组 `[{queryContext,fundamentals}]` |
+| `futures_get_warehouse_receipt` | **`{data:{code,message,data},error}`** |
+| `futures_get_research_opinion` | 裸对象 `{date,windCode,secName,summary,opinions}` |
+
+### ④ 描述与实际一致的部分 ✅
+
+- `futures_get_basis`【返回】「品种代码、名称、数据日期、基差值、历史分位及现货价格」——顶层含 `Wind代码`/`品种名称`，`fields` 含 `日期/现货价格/期货价格/基差/基差分位(%)` ✅
+- `futures_get_contract_spec`、`futures_get_fund_flow`、`futures_get_position_ranking`（`limit` 生效）、`futures_get_supply_demand`（指标元数据 `indicatorCode/indicatorName/commodity/function/frequency/unit/source/endDate` 齐全）的【返回】均与实际吻合 ✅
+- `futures_get_research_opinion`【返回】「核心摘要和方向属于研报聚合内容，不是工具自行分析」——实测 `opinions[]` 逐篇带 `company_name`/`direction`/`long_summary`，来源可追溯 ✅
+
+### 建议
+
+| P | 动作 |
+|---|---|
+| **P0** | `futures_get_position_ranking` / `futures_get_supply_demand` / `futures_get_warehouse_receipt` 的 `type` 写回 schema——描述承诺的「九类排名」「基本面类型」「业务类型」当前无入参可达 |
+| **P1** | `futures_get_warehouse_receipt` 的返回信封随 `type` 变化，需统一 |
+| **P1** | 去掉 `{code:200,message:"success"}` 这层 HTTP 式包装 |
+| P2 | 描述里说明 datatype 组合取决于是否传 `windCodes` |
+| P2 | 七个工具的顶层返回结构收敛到同一形态 |
+| P2 | 注册表 `mcp-servers.json` 需重新生成——3 个工具已下线、1 个新增 |

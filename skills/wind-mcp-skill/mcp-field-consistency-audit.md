@@ -1,18 +1,102 @@
-# 6 个新 MCP Server 字段一致性审计
+# 7 个 MCP Server 字段一致性 + 描述正确性审计
 
-实连 `tools/list`，2026-09-04 复测。Streamable HTTP + `Authorization: Bearer <apiKey>`，先 `initialize`（`2025-03-26`）再 `tools/list`。
+实连 `tools/list` + 逐工具实调。
 
-| Server | 工具数 | | Server | 工具数 |
+- 2026-09-04：字段一致性审计（132 工具 / 444 参数）
+- **2026-09-07：描述正确性专项复核**（7 个 server 全量重跑，比对 `description` 与真实返回）
+
+## 2026-09-07 线上工具数（与 09-04 相比又变了）
+
+| Server | 09-04 | 09-07 | 变动 |
+|---|---|---|---|
+| company_data | 54 | **54** | 5 个工具的区间字段回滚成 `timeFrom`/`timeTo`（后端仍只认 `startDate`） |
+| fund_research | 24→21 | **21** | 稳定 |
+| stock_research | 15 | **15** | 稳定 |
+| finance_data | 13 | **13** | 稳定 |
+| options_data | 17 | **11** | 下线 6 个（含 `calc_accumulator`/`calc_single_shark_fin`/`calc_hv_cone`） |
+| futures_data | 9 | **7** | 下线 3 个，新增 `futures_get_research_opinion` |
+| edb_data | 3 | **3** | `macro_*` → `economic_*`；`observation` → `numOfObservation`（仅 `get_*`） |
+
+合计 **124 个工具**（09-04 为 132）。`mcp-servers.json` 注册表已滞后，需重新生成。
+
+## 描述正确性复核结论速览
+
+| Server | 工具 | P0 | P1 | 判定 |
 |---|---|---|---|---|
-| company_data | 54 | | stock_research | 15 |
-| fund_research | 24 | | finance_data | 13 |
-| options_data | 17 | | futures_data | 9 |
+| [options_data](options-data-audit.md) | 11 | **2** | 2 | ❌ 最差：19 处 `default` 全是死值且后端不应用，9/11 工具省略后失败 |
+| [company_data](company-data-audit.md) | 54 | **3** | 5 | ❌ 引用不存在的工具名、enum 含非法值、3 个过滤参数无取值来源 |
+| [finance_data](finance-data-audit.md) | 13 | **1** | 4 | ⚠️ `general_query_data` 返回结构描述完全错误；文档类字段集随类型变化未说明 |
+| [fund_research](fund-research-audit.md) | 21 | **1** | 3 | ⚠️ `fund_screener` 过度承诺；`cycle` 默认值与实际相反 |
+| [edb_data](edb-data-audit.md) | 3 | **1** | 2 | ⚠️ 同义参数两个名字；「默认近 2 年」与实测不符 |
+| [futures_data](futures-data-audit.md) | 7 | **1** | 2 | ❌ 3 个工具的 `type` 从 schema 消失，描述承诺的「九类排名」无入参可达 |
+| [stock_research](stock-research-audit.md) | 15 | 0 | 1 | ✅ 最准：15/15 返回字段与描述吻合，只有示例问句和空结果格式的小问题 |
 
-共 **132 个工具、444 个参数**。endpoint 形如 `https://mcp.wind.com.cn/vserver_<name>/mcp/`。
+### 逐工具深度测试报告（2026-09-07）
 
-**逐工具实调进度（7 个 server 全部完成）**：[company_data 54/54](company-data-audit.md) · [fund_research 23/23](fund-research-audit.md) · [options_data 15/17](options-data-audit.md) · [stock_research 15/15](stock-research-audit.md) · [finance_data 13/13](finance-data-audit.md) · [futures_data 9/9](futures-data-audit.md) · [edb_data 3/3](edb-data-audit.md)。
+对 stock / futures / finance / edb 四个 server 做了逐工具的边界、入参、故意错误、描述核对、工具协同专项测试，共 **420 条用例**：
 
-> `options_calc_accumulator` / `options_calc_single_shark_fin` 服务端不可用（13 次尝试、9 种参数变体全部返回「服务暂时不可用」），非入参问题。
+| 报告 | 工具 | 用例 | 正常调用错误率 | 平均耗时 |
+|---|---|---|---|---|
+| [stock_research](test-report-stock-research.md) | 15 | 160 | **0%**（75/75） | 2996 ms |
+| [finance_data](test-report-finance-data.md) | 13 | 130 | **0%**（55/55） | 1720 ms |
+| [futures_data](test-report-futures-data.md) | 7 | 86 | **0%**（35/35） | 2992 ms |
+| [edb_data](test-report-edb-data.md) | 3 | 44 | **0%**（15/15） | 3001 ms |
+
+**正常路径 180/180 全部通过**，问题全部出在边界、非法入参与描述断言上。
+
+### 跨 server 的四个共性问题
+
+**1. 假 `default`：schema 声明了默认值，后端根本不应用**
+
+| Server | 例 |
+|---|---|
+| options_data | 19 处日期 default，9/11 工具省略后失败（含 `NullPointerException` 外泄） |
+| fund_research | `fund_get_return_attribution.benchmarkWindCode` default 存在但省略即报「缺少必填参数」 |
+| fund_research | `fund_get_style_analysis.cycle` default `monthly`，实际走 `quarterly` |
+
+**2. 写死的绝对日期 / 字面量当默认值**
+
+`options_data` 19 处（`2026-09-01`/`2026-06-01`/`2026-08-01`，其中 `calc_vanilla.expirationDate` 已过期）、`stock_get_company_finance_analysis.reportPeriod = "FY2025"`。这类值每过一天就更失真。
+
+**3.「服务暂时不可用，请稍后重试」被当成万能错误文案**
+
+实测该文案掩盖的真实原因至少有三类：缺必填参数（options 7 例）、数据量过大（`company_get_news_sentiment` 对万科/比亚迪不传区间必失败）、后端瞬时抖动（`fund_screener`、`options_get_variety_stats`）。调用方无法区分「重试有用」和「重试无用」。
+
+**4. 未知参数静默忽略，不报错**
+
+`edb.economic_get_indicator_series` 传旧名 `observation` → 静默返回默认区间；`company` 5 个工具传 schema 声明的 `timeFrom` → 静默返回近 5 年全量。
+
+反方向的问题更严重：**futures_data 有 3 个工具的 `type` 参数已从 schema 消失，后端却仍在正式支持**，导致描述承诺的能力无入参可达：
+
+| 工具 | 描述承诺 | schema 现状 | 后端实际 |
+|---|---|---|---|
+| `futures_get_position_ranking` | 「**九类**排名，多头/空头/净多净空/增减仓/成交量」 | 只有 `windCode`/`date`/`limit` | `type` 生效：1=多头持仓、2=空头持仓…；**不传默认只给多头** |
+| `futures_get_supply_demand` | 「按**基本面类型**查询」供需平衡/供应/需求/库存 | 无类型参数 | `type` 生效且被正式校验（`type 必须为 0、1、2、3、4`） |
+| `futures_get_warehouse_receipt` | 「按**业务类型**…查询交割或仓单」 | 只有 `windCodes`/`date` | `type` 生效，还会改变返回信封 |
+
+### `inputSchema.title` 泄漏内部名（7 处）
+
+| Server | 工具名 | schema.title |
+|---|---|---|
+| finance_data | `general_search_research_insight` | `MetaContentListArguments` |
+| finance_data | `general_get_research_insight` | `FinanceGetReferenceArguments` |
+| fund_research | `fund_get_similar_funds` | `fund_get_similar` |
+| fund_research | `fund_get_style_analysis` | `fund_get_market_cap_style` |
+| fund_research | `fund_get_return_attribution` | `fund_get_nav_attribution` |
+| fund_research | `fund_get_top_equity_holdings` | `fund_get_heavy_equity_holdings` |
+| fund_research | `fund_screener` | `fund_semantic_filter` |
+
+### 描述模板覆盖 ✅
+
+124/124 个工具全部具备 `【功能】/【适用场景】/【返回】/【边界】` 四段结构。但 company_data 有 48/54 的【适用场景】是同一句模板，对选工具没有区分度。
+
+### 引用了不存在的工具名
+
+只有 company_data 一处：5 个工具、8 处引用 `company_get_biz_num`，真名 `company_get_biz_enum`，后端报错文案里还有第三个名字 `risk_get_biz_enum`。其余 6 个 server 的跨工具引用全部有效。
+
+---
+
+# 附：2026-09-04 字段一致性审计
 
 ## 结论速览
 

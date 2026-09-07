@@ -102,3 +102,64 @@
 | P2 | `reportPeriod` → `fiscalPeriod`，与日期型 `reportPeriod` 区分；核实 `CY` 是否真支持，不支持就从描述删掉 |
 | P2 | `windCode` 描述里写清各工具接受的代码类型（股票 vs 板块指数） |
 | P3 | 补 3 个 `title`；考虑给实时/研究类工具加可选日期区间 |
+
+---
+
+> 逐工具的边界 / 入参 / 故意错误 / 工具协同专项测试见 [`test-report-stock-research.md`](test-report-stock-research.md)。
+
+## 描述正确性复核（2026-09-07）
+
+15 个工具全部实调，比对 `description` 与真实返回。**本 server 是 7 个 server 里描述准确度最高的**——15 个工具的【返回】字段清单与实际回包基本逐项吻合，只有下面 3 处小问题。
+
+### ① `stock_screener` 的 schema 自带示例问句跑不出数据
+
+```
+description/example: "筛选沪深市场市值超500亿且连续5日上涨的股票"
+→ 没找到数据（复现 2/2）
+```
+
+改成「连续**3**日上涨」立刻正常返回（`columns`/`rows` 带市值数值）。这大概率是真实空集而非故障，但把一个查不出结果的问句写进 schema 作为唯一示例，会让调用方误判工具失效。
+
+### ② 空结果时返回裸文本，与【返回】描述的结构不一致
+
+【返回】承诺「返回股票名称、Wind 代码、市场、指标、日期、数值、单位等标准化数据」，命中时确实是 `{"data":{"data":[{columns,rows}]}}`；**无命中时直接返回 5 字节纯文本 `没找到数据`**，且 `isError=false`。调用方需要额外分支处理。
+
+另：实际 `columns` 里没有描述提到的「市场」字段（有 `Wind代码`/`证券简称`/指标列/`交易币种`）。
+
+### ③ `stock_get_company_finance_analysis.reportPeriod` 的 default 是写死的字面量
+
+`default: "FY2025"`。实测省略时确实生效（回包 `request.reportPeriod = "FY2025"`），但这是硬编码的会计年度，随年份推移会指向越来越旧的报告期——与 `options_data` 的写死绝对日期同类问题，只是暂时还没过期。
+
+### ④ 摘要字段名在同 server 内不统一（P3）
+
+两个都返回「摘要 + 正文 + 资料日期」的工具，摘要字段名不一样：
+
+| 工具 | 顶层字段 |
+|---|---|
+| `stock_get_industry_research` | `abstract` / `content` / `date` |
+| `stock_get_asset_market_performance` | **`abstractText`** / `content` / `date` |
+
+### ⑤ 描述与实际一致的部分 ✅
+
+| 工具 | 核对结论 |
+|---|---|
+| `stock_get_company_profile` | 【返回】「身份定位/主营经营/行业与竞争位置/股东治理/**股本与重要子公司**/融资情况」全部命中——`股本结构`、`重要子公司` 在 `控制权与治理安排` 下 ✅ |
+| `stock_get_company_finance_analysis` | 三表 + 盈利能力/成本费用/杠杆/现金流质量/资产负债分析齐全 ✅ |
+| `stock_get_company_earnings_estimate` | 一致评级/目标价/未来三财年预测/各机构明细齐全 ✅ |
+| `stock_get_company_valuation` | PE/PB/PS/PCF/企业倍数/股息率 + 3年5年分位 + 可比公司 ✅，且回包自带口径注释 |
+| `stock_get_company_updates` | 五类 `recentEvent`/`announcement`/`news`/`report`/`meeting`，对应描述的「事件/公告/新闻/研究观点/投资者交流」✅ |
+| `stock_get_money_flow_analysis` | 成交活跃度/主力资金/融资融券/大宗/陆股通/机构持仓/十大流通股东 ✅ |
+| `stock_get_technical_analysis` | 趋势/均线/MACD/RSI/KDJ/布林/ATR/OBV/关键价位，且标注复权口径 ✅ |
+| `stock_get_market_realtime_analysis` / `stock_get_sector_realtime_analysis` / `stock_get_realtime_analysis` | 均带 `TradingTime` 与「当前交易状态」，与描述的时点标注要求一致 ✅ |
+| `stock_get_market_narratives` / `stock_get_narrative_details` | 「子叙事ID」作为链式键，逻辑链、时间线、板块信息齐全 ✅ |
+| `stock_get_asset_market_performance` / `stock_get_industry_research` | 摘要 + 正文 + 资料日期，与描述一致 ✅ |
+
+### 建议
+
+| P | 动作 |
+|---|---|
+| **P1** | `stock_screener` 换一个能稳定返回结果的示例问句 |
+| P2 | 空结果统一为结构化返回（`{"data":{"data":[]}}`），或在【返回】里写明「无命中时返回纯文本」 |
+| P2 | `columns` 里没有「市场」字段，【返回】描述相应调整 |
+| P3 | `reportPeriod` 的 `FY2025` 改为相对表达（如「最近一个已披露年报期」） |
+| P3 | `abstractText` → `abstract`，与 `stock_get_industry_research` 对齐 |

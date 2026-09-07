@@ -169,3 +169,97 @@
 | **P1** | `fund_get_selection_timing_analysis` 对无评价数据的基金改返回「不适用 / 无数据」，不要提示"数据源不可用请重试" |
 | P2 | 业务错误改 `isError=true` 或结构化错误码 |
 | P3 | `year` → `lookbackYears`；`cycle` 枚举差异写进描述；两套返回摘要结构统一 |
+
+---
+
+## 描述正确性复核（2026-09-07）
+
+21 个工具全部实调，比对 `description` 与真实返回。
+
+### ① P0：`fund_screener` 的【返回】严重过度承诺
+
+描述：「返回**基金名称、Wind 代码、基金类型、基金管理人、指标、日期、数值、单位**等标准化数据」
+
+实际只返回**代码列表**：
+
+```
+已按筛选条件「规模大于100亿的货币型基金」完成基金筛选，共匹配 232 只基金，超出展示上限 100，返回前 100 只。
+000009.OF、000198.OF、000203.OF、000300.OF、000330.OF、…
+```
+
+即使把指标写进问句也一样：`{"query":"510300.OF的最新规模"}` → `已按筛选条件「510300.OF的最新规模」完成基金筛选，返回 1 只基金。\n510300.OF`——**没有规模数值**。
+
+对照 `stock_research` 的 `stock_screener`（描述措辞几乎相同）确实返回 `columns`/`rows` 带数值，两者行为不对等。
+
+### ② P1：`fund_get_style_analysis.cycle` 声明的默认值与实际相反
+
+```
+"cycle": {"description": "分析周期 monthly（默认）/ quarterly；不支持 weekly/daily/yearly。",
+          "default": "monthly"}
+```
+
+实测：
+
+| 调用 | 实际返回 |
+|---|---|
+| 省略 `cycle` | **季度**，3 个周期（2025-12-31 / 2026-03-31 / 2026-06-30） |
+| `cycle:"monthly"` | 月度，11 个周期，最新 2026-08-31 |
+| `cycle:"quarterly"` | 季度，3 个周期 |
+
+省略时走的是 quarterly，与 schema `default` 和描述文案都相反。
+
+### ③ P1：`fund_get_return_attribution.benchmarkWindCode` 是假 default
+
+`default:"510300BI.WI"`，且不在 `required` 里。实测省略 → `isError=true` +「缺少必填参数: benchmarkWindCode」。
+
+### ④ P1：`fund_get_etf_pcf` 承诺的日期标识完全没有
+
+描述：「…并**区分请求日期和实际公告日期**；未取得指定日期清单时**标识实际日期、回退情况**或不适用状态。」
+
+实测输出里**没有任何日期字段**：
+
+```
+已返回1只ETF、300条成分证券记录。
+| 成分证券Wind代码 | 成分证券Wind名称 | 申赎数量(份) | 现金替代类型 | … |
+```
+
+`asOfDate` 传 `2026-08-15` 与 `2026-09-03` 返回完全相同的摘要行，无法判断实际回退到了哪一期 PCF。这在申赎场景下是实质风险——拿到的是哪天的清单不可知。
+
+### ⑤ 本轮 schema 静默掉了一批参数（后端静默忽略，非隐藏功能）
+
+对比 09-05 注册表，以下参数已从 schema 消失：
+
+| 工具 | 掉的参数 |
+|---|---|
+| `fund_get_basic_info` / `fund_get_nav` / `fund_get_purchase_redemption_status` / `fund_get_performance` / `fund_get_listed_historical_price` / `fund_get_financials` / `fund_get_size` | `includeMetadata` |
+| `fund_get_size` | `includeFields`、`reportDate` |
+| `fund_get_return_attribution` | `marketStyle`、`includeComponents` |
+
+实测这些参数现在被**静默忽略**（传 `includeMetadata:true` 与不传返回完全一致；`fund_get_size` 传 `reportDate:"2026-03-31"` 与不传返回完全一致），不像 `futures_data` 的 `type` 那样"schema 没有但后端仍生效"。属于坑 4 的常规情形——写错/用旧参数名不会报错。
+
+### ⑥ P2：5 个工具的 `inputSchema.title` 是旧内部名
+
+| 工具名 | schema.title |
+|---|---|
+| `fund_get_similar_funds` | `fund_get_similar` |
+| `fund_get_style_analysis` | `fund_get_market_cap_style` |
+| `fund_get_return_attribution` | `fund_get_nav_attribution` |
+| `fund_get_top_equity_holdings` | `fund_get_heavy_equity_holdings` |
+| `fund_screener` | `fund_semantic_filter` |
+
+### ⑦ 描述与实际一致的部分 ✅
+
+- `fund_get_similar_funds`「候选不足时按实际可用数量返回，字段缺失单独说明」——实测回显「返回19条，3条基础信息缺失」✅
+- `fund_get_bond_type_allocation`「无债券时返回合法空或不适用状态」——权益 ETF 实测「共0个券种」，非报错 ✅
+- `fund_get_financials` / `fund_get_performance` 的「缺失、不适用和未计算分别表达」——实测汇总行区分了「正常返回 / 不适用 / 未正常返回」三类（`fund_get_financials` 40 项中 10 正常 / 2 不适用 / 28 未正常；`fund_get_performance` 116 项中 95 / 0 / 21）✅
+- `fund_get_brinson_attribution`、`fund_get_style_analysis`、`fund_get_return_attribution`、`fund_get_selection_timing_analysis`、`fund_get_industry_allocation`、`fund_get_equity_holdings`、`fund_get_top_equity_holdings`、`fund_get_bond_holdings`、`fund_get_top_fund_holdings`、`fund_get_asset_allocation`、`fund_get_basic_info`、`fund_get_nav`、`fund_get_size`、`fund_get_purchase_redemption_status`、`fund_get_listed_historical_price` 的【返回】字段清单与实际表头逐项吻合 ✅
+
+### 建议
+
+| P | 动作 |
+|---|---|
+| **P0** | `fund_screener`【返回】改为「只返回代码列表」，或让后端真的返回名称/指标/数值（与 `stock_screener` 对齐） |
+| **P1** | `fund_get_style_analysis.cycle` 的 default 与实际行为对齐（改 default 为 `quarterly`，或让后端应用 `monthly`） |
+| **P1** | `fund_get_return_attribution.benchmarkWindCode` 移入 `required`，或让后端真的应用 default |
+| **P1** | `fund_get_etf_pcf` 返回里补上请求日期与实际 PCF 公告日期 |
+| P2 | `inputSchema.title` 统一为对外工具名 |

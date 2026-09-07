@@ -2,7 +2,23 @@
 
 实连 `tools/list` + 逐个实调，2026-09-04 第 3 轮复测。54 个工具中 **27 个带时间区间，27 个无日期参数**。
 
-## ✅ 当前状态：`startDate`/`endDate`，schema 与后端已一致
+## ⚠️ 2026-09-07 复测：已回退，本文以下内容是 09-04 的快照
+
+`tools/list` 实测：**22 个工具声明 `startDate`/`endDate`，5 个回滚为 `timeFrom`/`timeTo`**，而后端仍只认 `startDate`/`endDate`——第 3 轮的 schema/后端错位重现。
+
+| 回滚的工具 | 传 `timeFrom` | 传 `startDate` |
+|---|---|---|
+| `company_get_judgments` | 2278 条（参数被吞） | **6 条** |
+| `company_get_court_announcements` | 1577 条 | **62 条** |
+| `company_get_court_sessions` | 15248 条 | **61 条** |
+| `company_get_filing_info` | 7938 条 | **262 条** |
+| `company_get_news_sentiment` | 3399 条 | **94 条** |
+
+同区间 `2026-01-01 ~ 2026-03-31` / 恒大地产集团有限公司。**这 5 个工具一律传 `startDate`/`endDate`。**详见 [`company-data-audit.md`](company-data-audit.md)。
+
+---
+
+### 以下为 2026-09-04 第 3 轮复测快照
 
 `tools/list` 实测：**27 个工具声明 `startDate`/`endDate`，0 个声明 `timeFrom`/`timeTo`**。
 

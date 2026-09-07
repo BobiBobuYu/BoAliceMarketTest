@@ -1,7 +1,7 @@
 # 非 `startDate`/`endDate` 的时间范围入参
 
 实连 `tools/list`，2026-09-04。范围：company_data 以外的 5 个 server，共 78 个工具。
-（company_data 的 27 个区间工具经 4 轮反复后已稳定为 `startDate`/`endDate` 且与后端一致，见 [`company-data-date-fields.md`](company-data-date-fields.md)）
+（company_data 的区间工具见 [`company-data-date-fields.md`](company-data-date-fields.md)。**2026-09-07 更新：其中 5 个工具的 schema 已回滚为 `timeFrom`/`timeTo`，后端仍只认 `startDate`/`endDate`**——详见 [`company-data-audit.md`](company-data-audit.md) 顶部第 5 轮记录）
 
 ## 速览
 
@@ -26,7 +26,9 @@
 
 起点用 begin 词根、终点用 end，一对参数内部不成对。同 server 的 `general_query_documents` 用的是 `startDate`/`endDate`，两个都是文档检索工具。
 
-> 2026-09-04 复测：`general_search_documents` 的 `beginDate` **已改为 `startDate`**，本项已闭环（详见 `finance-data-audit.md`）。
+> 2026-09-04 复测：`general_search_documents` 的 `beginDate` **已改为 `startDate`**，参数本身已闭环（详见 `finance-data-audit.md`）。
+>
+> ⚠️ 2026-09-07 复测：参数名确实是 `startDate`，但 **`endDate` 的字段描述里仍写着「与 `beginDate` 可单独或同时使用」**——描述没跟着改，指向一个不存在的参数名。
 
 ### 2. `quote_get_historical_dataseries`（finance_data）—— `params.begin` + `params.end`
 

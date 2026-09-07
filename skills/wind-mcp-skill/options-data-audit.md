@@ -135,3 +135,76 @@
 | P2 | `time` → `queryTime` 或 `tradeTime`，并在描述里强调带时分 |
 | P3 | `windows` → `window`；`indicator` → `indicatorType` 以区别于 `indicators` |
 | P3 | 标识字段收敛：`optionVarietyCode` / `optionContractCodes` 考虑并入 `windCode` / `windCodes` 体系 |
+
+---
+
+## 描述正确性复核（2026-09-07）
+
+线上工具从 17 个减至 **11 个**（`options_calc_accumulator`、`options_calc_single_shark_fin`、`options_calc_hv_cone` 等已下线）。11 个全部实调。
+
+### ① P0：19 处 schema `default` 是死值，且后端根本不应用
+
+11 个工具的日期类参数全部标注了 `default`，值是**写死的绝对日期**：
+
+| 工具.参数 | 声明的 default |
+|---|---|
+| `options_get_listed_terms.tradeDate` | `2026-09-01` |
+| `options_get_term_metrics.tradeDate` / `.expiryDate` | `2026-06-01` / `2026-09-01` |
+| `options_get_contract_series.startDate` / `.endDate` | `2026-06-01` / `2026-09-01` |
+| `options_get_variety_series.startDate` / `.endDate` | `2026-06-01` / `2026-09-01` |
+| `options_get_variety_stats.startDate` / `.endDate` | `2026-06-01` / `2026-09-01` |
+| `options_calc_iv_cone.startDate` / `.endDate` | `2026-06-01` / `2026-09-01` |
+| `options_get_sentiment_data.startDate` / `.endDate` | `2026-06-01` / `2026-09-01` |
+| `options_calc_vanilla.expirationDate` / `.valuationDate` | `2026-09-01` / `2026-08-01` |
+| `options_calc_binary.expirationDate` / `.valuationDate` | `2026-09-01` / `2026-08-01` |
+| `options_get_volatility_surface.time` | `2026-09-01 10:00` |
+| `options_get_iv_term_structure.time` | `2026-09-01 10:00` |
+
+全部 `required=false`。但**省略它们时 9/11 个工具直接失败**：
+
+| 工具 | 省略 default 参数后的实际结果 |
+|---|---|
+| `options_get_listed_terms` | ❌ 服务暂时不可用，请稍后重试 |
+| `options_get_term_metrics` | ❌ 同上 |
+| `options_get_contract_series` | ❌ 同上 |
+| `options_get_variety_series` | ❌ 同上 |
+| `options_get_variety_stats` | ❌ 同上（复现 3/3；补上日期后 2/2 正常） |
+| `options_calc_iv_cone` | ❌ 同上 |
+| `options_get_sentiment_data` | ❌ 同上 |
+| `options_calc_vanilla` | ❌ `估值日期不能为空；到期日期不能为空` |
+| `options_calc_binary` | ❌ **`参数处理失败：NullPointerException`**（Java 异常外泄） |
+| `options_get_volatility_surface` | ✅ 正常（实际取当前时间，非声明的 `2026-09-01 10:00`） |
+| `options_get_iv_term_structure` | ✅ 正常（同上，实测回显 `2026-09-07 11:07`） |
+
+即便是能跑通的两个，实际取值也不是声明的 default。**结论：这 19 个 `default` 全部无效，应视作必填。**
+
+另外 `options_calc_vanilla.expirationDate` 的 default `2026-09-01` 已早于当前日期（2026-09-07）——即使 default 生效，也会得到一份已到期的期权。
+
+### ② 「服务暂时不可用」掩盖真实原因
+
+上表中 7 个失败返回的是「服务暂时不可用，请稍后重试」，实际原因是**缺参数**。这个文案会诱导调用方无效重试（09-04 记录的 `options_calc_accumulator`「13 次尝试全失败」很可能是同一类问题被同一文案掩盖）。
+
+### ③ `options_get_variety_stats` 偶发返回「有单位、无数据」的半成品
+
+同一组合法参数，首次调用返回：
+
+```json
+{"indicator":"hv","windows":"20","startDate":"2026-01-01","endDate":"2026-09-03",
+ "meta_info":{"unit":{"currentValue":"%","mean":"%",...}}}
+```
+
+——没有 `510050.SH` 这个标的键，没有任何统计值，也没有 `isError` 或异常标记。原样重试即返回完整结果（`currentValue/mean/max/min/median/percentile/quantiles` 齐全，2/2）。描述称「无有效样本时返回合法空结果或结构化异常」，但这里样本有效，属于静默失败。
+
+### ④ 描述与实际一致的部分 ✅
+
+`listed_terms` / `term_metrics` / `contract_series` / `variety_series` / `volatility_surface` / `iv_term_structure` / `calc_iv_cone` / `sentiment_data` / `calc_vanilla` / `calc_binary` 的【返回】字段清单与实际回包逐项吻合；`indicator`、`tenor`、`moneyness`、`deltaLevel` 四个枚举完整且准确；条件必填的表述（「当 indicator 为 vol_moneyness 时必填」）与后端行为一致。
+
+### 建议
+
+| P | 动作 |
+|---|---|
+| **P0** | 19 处 `default` 要么让后端真的应用，要么删掉 default 并把字段移入 `required` |
+| **P0** | 绝对日期 default 改为相对表达（如「省略时取最近交易日」），否则每过一天就更失真 |
+| **P1** | 缺参数应返回「缺少必填参数: X」，不要一律用「服务暂时不可用」 |
+| **P1** | `options_calc_binary` 的 `NullPointerException` 不应透出给调用方 |
+| P2 | `options_get_variety_stats` 的静默半成品返回需定位；空结果应带明确标记 |
