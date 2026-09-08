@@ -1,6 +1,6 @@
 # wind-skills
 
-> **Wind 万得金融 Skill 集合（monorepo）** · 通过 MCP 协议把万得金融数据接入 Claude / OpenClaw / Hermes 等 AI Agent，并一站式收录 wind 自家数据 + 社区分析工作流共 36 个金融 skill
+> **Wind 万得金融 Skill 集合（monorepo）** · 通过 MCP 协议把万得金融数据接入 Claude / OpenClaw / Hermes 等 AI Agent，并一站式收录 wind 自家数据 + 社区分析工作流共 39 个金融 skill
 
 [![GitHub](https://img.shields.io/badge/GitHub-Wind--Information--Co--Ltd%2Fwind--skills-blue?logo=github)](https://github.com/Wind-Information-Co-Ltd/wind-skills)
 
@@ -29,6 +29,9 @@
 | Skill                                       | 能力域                                                                                                                              |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | [`wind-alice`](./skills/wind-alice)         | **Alice 专业金融分析 Agent 入口**：A2A 协议 + SSE 流式，跑 Alice 子 Skill（公司一页纸 / 调研问题清单 / 事实核验 / 财报点评 / 主题选股 / 基金分析 / 宏观、债券、信用分析 / 市场规模测算 / 可比公司分析） |
+| [`wind-alice-equity-research-expert`](./skills/wind-alice-equity-research-expert) | **Alice 个股研究专家**（`activeSubAgent: equity-deep-research-agent`）：个股深研、财报与事件解读、估值位置与同业比较、可证伪投资 Thesis |
+| [`wind-alice-wealth-advisor`](./skills/wind-alice-wealth-advisor) | **Alice 财富管理专家**（`activeSubAgent: advisor`）：客户洞察、产品研究与筛选、持仓诊断、资产配置、调仓再平衡、定投与保险保障 |
+| [`wind-alice-meeting-expert`](./skills/wind-alice-meeting-expert) | **Alice 会议专家**（`activeSubAgent: meeting`）：路演/业绩会/调研拜访的会前准备、会中 AI 参会记录、会后纪要与跟进 |
 
 ### 金融技能类
 
@@ -68,6 +71,7 @@
 > `wind-find-finance-skill` 是入口型 meta-skill，不调 MCP server、不需要 API Key。
 > `wind-mcp-skill` 用于访问万得 Wind 金融数据，按数据域分类调用。
 > `wind-alice` 是 Alice 专业金融分析 Agent 入口，跑 Alice 子 Skill 做综合分析，需要 API Key。
+> `wind-alice-equity-research-expert` / `wind-alice-wealth-advisor` / `wind-alice-meeting-expert` 是 `wind-alice` 的专家包分支：用户原话原样透传，靠请求体的 `activeSubAgent` 路由到对应专家，同样需要 API Key。
 
 ---
 
@@ -219,6 +223,9 @@ wind-skills/
     ├── mx-finance-data/            ← 东方财富金融数据
     ├── tushare-finance-skill/      ← Tushare Pro 金融数据
     ├── wind-alice/                 ← Alice 专业金融分析 Agent
+    ├── wind-alice-equity-research-expert/  ← Alice 个股研究专家
+    ├── wind-alice-wealth-advisor/          ← Alice 财富管理专家
+    ├── wind-alice-meeting-expert/          ← Alice 会议专家
     ├── a-share-primary-theme-identification/
     ├── backtest-expert/
     ├── breakout_candidate_finder_skill/

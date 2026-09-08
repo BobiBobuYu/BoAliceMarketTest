@@ -1,0 +1,19 @@
+{
+  "name": "wind-alice-equity-research-expert",
+  "version": "1.0.2",
+  "description": "CLI: 调用万得 Alice Agent（A2A SSE）的「个股研究专家」，activeSubAgent=equity-deep-research-agent，流式输出分析结果",
+  "type": "module",
+  "private": true,
+  "files": [
+    "SKILL.md",
+    "package.json",
+    "scripts/"
+  ],
+  "bin": {
+    "wind-alice-equity-research-expert": "./scripts/wind-alice-equity-research-expert.mjs",
+    "aere": "./scripts/wind-alice-equity-research-expert.mjs"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"__tests__/**/*.test.mjs\""
+  }
+}
