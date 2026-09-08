@@ -1,752 +1,1146 @@
-# Wind Alice CLI 技能明细目录（33 个技能）
+# Wind Alice 技能介绍
 
-> 从 [`skills/Alice-CLI-技能与专家清单.md`](../skills/Alice-CLI-技能与专家清单.md) 整理而成：把原文分散在**总表**（slug / 别名 / 版本 / 耗时）和**描述明细**（中英文描述 / 示例问法 / 事件前缀）两处的字段合并成「每个技能一条完整记录」，并按数据域分组，便于查名字、查用途、查怎么调。
+Wind Alice 面向金融从业者提供 **33 个专业分析技能**，覆盖个股研究、基金、固收信用、宏观配置、商品期货、期权衍生品、监管政策与通用研究八大方向。每个技能都是一条完整的分析链路：接收自然语言提问，自动取数、分析、成稿，交付结构化报告。
 
-整理日期：2026-09-08　|　技能 **33** 个　|　专家 **4** 个（见文末附录）
-
-**怎么调用**：技能包由 CLI 自动给 prompt 加前缀，`--skill` 传**中文名或英文名**均可，不是 slug 也不是别名。
-
-```bash
-node scripts/wind-alice.mjs --prompt "<用户原话>" --skill "<中文名 或 英文名>"
-```
-
-| 问句语言 | CLI 实际发出的 text |
-|---|---|
-| 含中文 | `使用「<中文名>」技能：<原话>` |
-| 全英文 | `Using "<英文名>" skill:<原话>` |
+下面按方向逐个介绍每个技能的**能做什么、怎么问、产出什么**。
 
 ---
 
-## 快速索引
+## 技能总览
 
-| # | 中文名 | 英文名 | 分类 | 别名 | 一句话 |
-|---|--------|--------|------|------|--------|
-| 1 | **A股短线策略报告** | A-Share Short-Term Strategy Report | 权益 · 个股研究 | `aassr` | 每日收盘后自动拉取 Wind 涨停股与指数行情，梳理热点概念群与资金轮动方向 |
-| 2 | **AI商品策略师** | AI Commodity Strategist | 商品 · 期货 | `aacs` | 覆盖能源、黑色、有色、化工、农产品、贵金属全板块的机构级策略输出 |
-| 3 | **资产配置-行业轮动策略** | Asset Allocation - Sector Rotation Strategy | 宏观 · 资产配置 | `asrs` | 分析未来 1-6 个月各行业相对强弱与权重倾斜，结合动量、资金面、估值与景气度因子输出超配/中性/低配清… |
-| 4 | **资产配置-战略基准组合** | Asset Allocation - Strategic Baseline Portfolio | 宏观 · 资产配置 | `aasbp` | 结合风险偏好、投资期限、约束与长期市场数据，制定 3-5 年战略资产配置基准组合 |
-| 5 | **债券利率走势研判** | Bond Rate Outlook | 固收 · 信用 | `abro` | 支持交易/策略/配置多视角切换，覆盖五大维度系统化研判 |
-| 6 | **券商金股追踪** | Broker Top Picks Tracker | 权益 · 个股研究 | `abtpt` | 汇总各大券商月度金股推荐，统计推荐热度与行业分布，输出含金股排行、推荐理由摘要与近月变化趋势的结构化报告 |
-| 7 | **商品智研助手** | Commodity Research Assistant | 商品 · 期货 | `acra` | 输入期货品种名称或 Wind Code，自动生成涵盖价格、基差、基本面、远期曲线、资金、仓单、宏观等多维… |
-| 8 | **公司一页纸** | Company One-Page Investment Memo | 权益 · 个股研究 | `acom` | 为上市公司生成结构化一页纸投资报告，涵盖公司速览、投资逻辑、催化剂、财务估值、风险评估与操作建议 |
-| 9 | **可比公司分析** | Comps Analysis | 权益 · 个股研究 | `acomps` | 构建机构级可比公司分析，覆盖经营指标、估值倍数对比及统计基准分析 |
-| 10 | **信用分析** | Credit Analysis | 固收 · 信用 | `aca` | 对各类企业 / 机构主体做六大维度系统化信用研究，集成 Wind 风险评分提供更精准违约概率 |
-| 11 | **深度研究** | Deep Research | 通用研究 · 文档产出 | `adr` | 对任意主题进行结构化、多阶段深度研究，先澄清问题、界定研究范围与维度并确认研究计划 |
-| 12 | **事实核验** | Fact Check | 通用研究 · 文档产出 | `afc` | 粘贴含金融数据、公司声明或行业事件的文字，逐点验证并生成结构化核查报告 |
-| 13 | **基金对比分析** | Fund Compare | 基金 | `afcmp` | 对多只基金做业绩、风险、持仓、管理四维度对比分析，支持客观中立与主观倾向性分析 |
-| 14 | **基金涨跌解读** | Fund Performance Attribution Assistant | 基金 | `afpa` | 拆解基金或 ETF 一段时间内涨跌背后的持仓贡献、行业影响、事件驱动与宏观因素 |
-| 15 | **基金筛选与投资建议** | Fund Screening & Investment Advisory | 基金 | `afsia` | 多维度基金筛选、对比分析与个性化投资建议，输出含筛选结果、对比分析、配置建议与投资者画像匹配的结构化报告 |
-| 16 | **期货资金流向监测** | Futures Fund Flow Monitor | 商品 · 期货 | `affm` | 基于品种持仓额变化监测全市场、板块与单品种的资金流入流出异动 |
-| 17 | **期货主力行为分析** | Futures Leading Institution Analysis | 商品 · 期货 | `aflia` | 分析期货公司代理席位的多空增减仓、净持仓、成交量排名、跨品种持仓与估算盈亏 |
-| 18 | **期货研报观点** | Futures Research Opinion | 商品 · 期货 | `afro` | 聚合国内商品期货机构研报多空观点，计算 Wind 情绪评分 |
-| 19 | **全球上市公司季报点评** | Global Share Quarterly Earnings Review | 权益 · 个股研究 | `agsqer` | 一键生成卖方研究风格财报点评，涵盖业绩回顾、盈利能力、投资逻辑、盈利预测与风险提示 |
-| 20 | **通胀情景债券轮动策略** | Inflation Bond Strategy | 固收 · 信用 | `aibs` | 实时追踪 CPI/PPI 四种通胀拐点信号，自动判断当月是否持有债券或转持货币基金（可空仓模式） |
-| 21 | **机构持仓透视** | Institutional Holdings Insight | 权益 · 个股研究 | `aihi` | 追踪顶级机构最新买卖，输出含新建仓/清仓名单、增减持排序、板块资金流向与历史调仓轨迹的一页纸持仓简报 |
-| 22 | **期货盘中异动归因** | Intraday Futures Move Attribution | 商品 · 期货 | `aifma` | 核验行情、量仓、板块联动、内外盘传导与事件线索，回答某品种为何拉升/跳水/放量/突破 |
-| 23 | **投资标的创意与筛选** | Investment Idea Generation | 权益 · 个股研究 | `aiig` | 从全市场主动发掘投资机会，支持量化因子筛选与主题驱动扫描 |
-| 24 | **宏观数据解读** | Macro Data Interpretation | 宏观 · 资产配置 | `amdi` | 将 CPI/PPI/PMI/GDP/社融/外贸/失业率/利率等宏观指标解读为结构化研究周报 |
-| 25 | **市场规模测算与战略建模** | Market Sizing & Strategic Modeling | 通用研究 · 文档产出 | `amssm` | Top-down / Bottom-up 双路径交叉验证 |
-| 26 | **金融监管局处罚月报** | NFRA Monthly Enforcement Report | 监管 · 政策 | `nmre` | 基于国家金融监督管理总局（NFRA）及各地派出机构的公开处罚数据 |
-| 27 | **期权定价计算器** | Option Pricing Calculator | 期权 · 衍生品 | `aopc` | 对香草、二元、障碍、亚式、触碰、鲨鱼鳍、累计及 Autocall/雪球/三层区间等期权做理论定价 |
-| 28 | **期权波动率洞察** | Option Volatility Insights | 期权 · 衍生品 | `aovi` | 诊断期权 IV 估值、期限结构、Skew、PCR 与波动率曲面 |
-| 29 | **期权交易策略** | Options Trading Strategies | 期权 · 衍生品 | `aots` | 融合波动率信号构建、异动打分、策略推荐与情景汇总，输出五段式期权交易方案 |
-| 30 | **幻灯片** | PPT Generator | 通用研究 · 文档产出 | `apg` | 根据主题与结构化内容自动生成专业 PPT 报告，支持标题页、目录、章节页、图文排版与结论总结 |
-| 31 | **证券业监管政策简报** | Securities Regulatory Policy Briefing | 监管 · 政策 | `srpb` | 基于 Wind 监管法规数据库，获取指定时间范围内的证券行业监管政策 |
-| 32 | **上市公司调研问题清单** | Stock DD List | 权益 · 个股研究 | `asdl` | 一键生成买方视角结构化调研问题清单，含看多/看空逻辑摘要、3-5 个深度议题及管理层调研问题 |
-| 33 | **按主题选股** | Thematic Stock Screening | 权益 · 个股研究 | `atss` | 系统拆解主题投资逻辑、验证数据兑现、筛选核心受益标的 |
+### 权益 · 个股研究
 
----
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 公司一页纸 | Company One-Page Investment Memo | 为上市公司生成一页纸投资报告，含投资逻辑、催化剂、估值与风险 |
+| 上市公司调研问题清单 | Stock DD List | 生成买方视角调研问题清单，含看多看空逻辑与管理层问题 |
+| 全球上市公司季报点评 | Global Share Quarterly Earnings Review | 一键生成卖方风格财报点评，覆盖 A 股 / 港股 / 美股 / 欧洲 |
+| 可比公司分析 | Comps Analysis | 机构级可比公司分析，交付 Excel 模型 + 文字报告 |
+| 投资标的创意与筛选 | Investment Idea Generation | 量化因子筛选 + 主题扫描，主动发掘投资机会 |
+| 按主题选股 | Thematic Stock Screening | 拆解主题逻辑、验证数据兑现、筛出真受益标的 |
+| 券商金股追踪 | Broker Top Picks Tracker | 汇总各券商月度金股，统计推荐热度与行业分布 |
+| 机构持仓透视 | Institutional Holdings Insight | 追踪顶级机构建仓清仓与调仓轨迹，一页纸持仓简报 |
+| A股短线策略报告 | A-Share Short-Term Strategy Report | 收盘后自动复盘涨停与资金轮动，输出短线主线研判 |
 
-## 技能明细
+### 基金
 
-### 权益 · 个股研究（9 个）
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 基金对比分析 | Fund Compare | 多只基金业绩、风险、持仓、管理四维度对比 |
+| 基金筛选与投资建议 | Fund Screening & Investment Advisory | 按风险偏好与期限筛选基金，匹配投资者画像给配置建议 |
+| 基金涨跌解读 | Fund Performance Attribution Assistant | 拆解基金/ETF 一段时间涨跌背后的归因，图表呈现 |
 
-#### 公司一页纸 / Company One-Page Investment Memo
+### 固收 · 信用
 
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **公司一页纸** |
-| 英文名（`--skill` 可用） | **Company One-Page Investment Memo** |
-| 目录 / slug | `alice-company-one-page-investment-memo` |
-| CLI 别名 | `acom` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_COMPANY_ONE_PAGE_INVESTMENT_MEMO` |
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 信用分析 | Credit Analysis | 六大维度系统化信用研究，集成 Wind 风险评分测算违约概率 |
+| 债券利率走势研判 | Bond Rate Outlook | 交易/策略/配置三视角切换，五维度研判利率走势 |
+| 通胀情景债券轮动策略 | Inflation Bond Strategy | 追踪通胀拐点信号，做债券/货基切换或久期轮动 |
 
-**介绍**：Wind Alice 公司一页纸 CLI：为上市公司生成结构化一页纸投资报告，涵盖公司速览、投资逻辑、催化剂、财务估值、风险评估与操作建议，支持 A 股、港股、美股等全球市场。
+### 宏观 · 资产配置
 
-**English**：Wind Alice Company One-Page Investment Memo CLI - generates structured one-page investment reports for listed companies across global markets (A-shares, HK, US, etc.), covering company overview, investment thesis, catalysts & tracking metrics, financial & valuation analysis, risk assessment, and actionable recommendations.
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 宏观数据解读 | Macro Data Interpretation | 把 CPI/PPI/PMI/GDP 等宏观指标解读成结构化研究周报 |
+| 资产配置-行业轮动策略 | Asset Allocation - Sector Rotation Strategy | 研判未来 1-6 个月行业相对强弱，输出超配/低配清单 |
+| 资产配置-战略基准组合 | Asset Allocation - Strategic Baseline Portfolio | 制定 3-5 年战略资产配置基准，输出大类权重与预期风险收益 |
 
-**示例问法**：请分析一下比亚迪的投资价值？腾讯有没有短线机会？
+### 商品 · 期货
 
-#### 上市公司调研问题清单 / Stock DD List
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 商品智研助手 | Commodity Research Assistant | 输入品种即出商品智能日报，覆盖价格、基差、库存、供需、资金 |
+| AI商品策略师 | AI Commodity Strategist | 全板块商品机构级策略，支持盘前/盘中/盘后三段运行 |
+| 期货研报观点 | Futures Research Opinion | 聚合机构研报多空观点，计算 Wind 情绪评分 |
+| 期货资金流向监测 | Futures Fund Flow Monitor | 按持仓额变化监测资金流入流出，评估 T+1/T+5 价格表现 |
+| 期货主力行为分析 | Futures Leading Institution Analysis | 分析会员席位多空增减仓、净持仓与估算盈亏 |
+| 期货盘中异动归因 | Intraday Futures Move Attribution | 解释某品种为何拉升/跳水/放量，或扫描全市场异动 |
 
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **上市公司调研问题清单** |
-| 英文名（`--skill` 可用） | **Stock DD List** |
-| 目录 / slug | `alice-stock-dd-list` |
-| CLI 别名 | `asdl` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_STOCK_DD_LIST` |
+### 期权 · 衍生品
 
-**介绍**：Wind Alice 上市公司调研问题清单 CLI：一键生成买方视角结构化调研问题清单，含看多/看空逻辑摘要、3-5 个深度议题及管理层调研问题，支持 A 股、港股及海外上市公司。
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 期权波动率洞察 | Option Volatility Insights | 诊断 IV 估值、期限结构、Skew、PCR 与波动率曲面 |
+| 期权交易策略 | Options Trading Strategies | 波动率信号 + 异动打分 + 策略推荐，输出五段式交易方案 |
+| 期权定价计算器 | Option Pricing Calculator | 香草到雪球全品类期权理论定价，输出 NPV 与希腊字母 |
 
-**English**：Wind Alice Stock DD List CLI - generate a buy-side due diligence question list for any listed company in one step. Retrieves financial data, broker research, industry news, and consensus estimates to produce a structured investment memo with bull/bear thesis, 3–5 deep-dive topics, and pointed questions for management meetings. Works for A-shares, Hong Kong, and international listings.
+### 监管 · 政策
 
-**示例问法**：帮我生成比亚迪的调研问题清单
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 证券业监管政策简报 | Securities Regulatory Policy Briefing | 汇总指定区间证券业监管政策，中英双语结构化简报 |
+| 金融监管局处罚月报 | NFRA Monthly Enforcement Report | 按月汇总银行/保险/信托行政处罚，三章式中英双语月报 |
 
-#### 全球上市公司季报点评 / Global Share Quarterly Earnings Review
+### 通用研究 · 文档产出
 
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **全球上市公司季报点评** |
-| 英文名（`--skill` 可用） | **Global Share Quarterly Earnings Review** |
-| 目录 / slug | `alice-global-share-quarterly-earnings-review` |
-| CLI 别名 | `agsqer` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_GLOBAL_SHARE_QUARTERLY_EARNINGS_REVIEW` |
-
-**介绍**：Wind Alice 全球上市公司季报点评 CLI：一键生成卖方研究风格财报点评，涵盖业绩回顾、盈利能力、投资逻辑、盈利预测与风险提示，支持 A 股、港股、美股及欧洲市场。
-
-**English**：Wind Alice Global Share Quarterly Earnings Review CLI - generates sell-side style earnings reviews in one click. Enter a company name and reporting period to automatically extract financial data, analyze profitability, synthesize investment themes, reference consensus estimates, and flag key risks, delivering a structured one-page commentary. Covers A-shares, Hong Kong, US, and European markets with automatic adaptation to local disclosure rules. Also detects preliminary earnings announcements.
-
-**示例问法**：帮我点评一下贵州茅台的最新季报
-
-#### 可比公司分析 / Comps Analysis
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **可比公司分析** |
-| 英文名（`--skill` 可用） | **Comps Analysis** |
-| 目录 / slug | `alice-comps-analysis` |
-| CLI 别名 | `acomps` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_COMPS_ANALYSIS` |
-
-**介绍**：Wind Alice 可比公司分析 CLI：构建机构级可比公司分析，覆盖经营指标、估值倍数对比及统计基准分析，输出 Excel 表格 + 文字分析报告。
-
-**English**：Wind Alice Comps Analysis CLI - build institutional-grade Comparable Companies Analysis, delivered in Excel workbook and written analytical report, covering operating metrics, valuation multiple comparisons, and statistical benchmark analysis across peer companies.
-
-**示例问法**：帮我做一份宁德时代的可比公司分析？比亚迪有没有短线机会？
-
-#### 投资标的创意与筛选 / Investment Idea Generation
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **投资标的创意与筛选** |
-| 英文名（`--skill` 可用） | **Investment Idea Generation** |
-| 目录 / slug | `alice-investment-idea-generation` |
-| CLI 别名 | `aiig` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_INVESTMENT_IDEA_GENERATION` |
-
-**介绍**：Wind Alice 投资标的创意与筛选 CLI：从全市场主动发掘投资机会，支持量化因子筛选与主题驱动扫描，输出带有逻辑论据、催化剂和风险提示的结构化投资创意报告。
-
-**English**：Wind Alice Investment Idea Generation CLI - proactively surfaces new investment candidates across global markets via quantitative factor screens and thematic sweeps, with configurable sector, market cap, geography, and style parameters; delivers concise idea reports with thesis, catalysts, and key risks.
-
-**示例问法**：帮我找一些 A 股市场的价值股？
-
-#### 按主题选股 / Thematic Stock Screening
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **按主题选股** |
-| 英文名（`--skill` 可用） | **Thematic Stock Screening** |
-| 目录 / slug | `alice-thematic-stock-screening` |
-| CLI 别名 | `atss` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_THEMATIC_STOCK_SCREENING` |
-
-**介绍**：Wind Alice 按主题选股 CLI：系统拆解主题投资逻辑、验证数据兑现、筛选核心受益标的，输出受益标的表、估值对比、交易建议与风险证伪点。
-
-**English**：Wind Alice Thematic Stock Screening CLI - systematically deconstructs market narratives, validates logic maturity with key data, identifies genuine beneficiaries, and delivers valuation context with historical PE percentile and actionable trading perspective for sector investing and concept stock filtering.
-
-**示例问法**：如何参与AI算力主题？有哪些真受益标的？
-
-#### 券商金股追踪 / Broker Top Picks Tracker
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **券商金股追踪** |
-| 英文名（`--skill` 可用） | **Broker Top Picks Tracker** |
-| 目录 / slug | `alice-broker-top-picks-tracker` |
-| CLI 别名 | `abtpt` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_BROKER_TOP_PICKS_TRACKER` |
-
-**介绍**：Wind Alice 券商金股追踪 CLI：汇总各大券商月度金股推荐，统计推荐热度与行业分布，输出含金股排行、推荐理由摘要与近月变化趋势的结构化报告。
-
-**English**：Wind Alice Broker Top Picks Tracker CLI - aggregates monthly broker top-pick recommendations, ranks stocks by recommendation frequency and heat score, summarizes investment rationale, and delivers sector distribution breakdown and trend charts. Ideal for monthly strategy meetings, sector rotation analysis, and pre-research stock screening.
-
-**示例问法**：2026年5月有哪些券商金股？医药生物有没有短线机会？
-
-#### 机构持仓透视 / Institutional Holdings Insight
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **机构持仓透视** |
-| 英文名（`--skill` 可用） | **Institutional Holdings Insight** |
-| 目录 / slug | `alice-institutional-holdings-insight` |
-| CLI 别名 | `aihi` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_INSTITUTIONAL_HOLDINGS_INSIGHT` |
-
-**介绍**：Wind Alice 机构持仓透视 CLI：追踪顶级机构最新买卖，输出含新建仓/清仓名单、增减持排序、板块资金流向与历史调仓轨迹的一页纸持仓简报
-
-**English**：Wind Alice Institutional Holdings Insight CLI - See what the world's top investors actually bought and sold. Enter a firm or fund name and get a one-page holdings brief: the full list of new and exited positions, the largest buys and sells ranked by estimated trade value, where capital moved between sectors, plus top holdings, quarter-over-quarter history, and charts. Carefully analyzes changes in share count, portfolio weight, and market value. Covers US 13F filings, China fund reports, and Hong Kong disclosures.
-
-**示例问法**：桥水基金最新的 13F 持仓有什么变化？
-
-#### A股短线策略报告 / A-Share Short-Term Strategy Report
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **A股短线策略报告** |
-| 英文名（`--skill` 可用） | **A-Share Short-Term Strategy Report** |
-| 目录 / slug | `alice-a-share-short-term-strategy-report` |
-| CLI 别名 | `aassr` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_A_SHARE_SHORT_TERM_STRATEGY_REPORT` |
-
-**介绍**：Wind Alice A股短线策略报告 CLI：每日收盘后自动拉取 Wind 涨停股与指数行情，梳理热点概念群与资金轮动方向，输出含收盘综述、涨停板复盘、AI 主线研判的结构化报告。
-
-**English**：Pulling daily Wind data on limit-up stocks, index closes, and sector moves, the AI maps hot concept clusters, identifies capital themes via broker research, and delivers a structured closing recap - covering index performance, turnover, sector breakdowns, and forward sector outlook for short-term traders.
-
-**示例问法**：生成今日 A 股短线策略报告
+| 技能 | English | 一句话 |
+|------|---------|--------|
+| 深度研究 | Deep Research | 任意主题多阶段深度研究，并行子代理调研后汇总成报告 |
+| 事实核验 | Fact Check | 粘贴一段话逐点核验，标明哪些准确、哪些有出入、哪些查不到 |
+| 市场规模测算与战略建模 | Market Sizing & Strategic Modeling | Top-down/Bottom-up 双路径交叉验证市场规模，输出 Excel 模型 |
+| 幻灯片 | PPT Generator | 按主题与结构化内容自动生成专业 PPT 报告 |
 
 ---
 
-### 基金（3 个）
+# 权益 · 个股研究
 
-#### 基金对比分析 / Fund Compare
+## Company One-Page Investment Memo（公司一页纸）
 
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **基金对比分析** |
-| 英文名（`--skill` 可用） | **Fund Compare** |
-| 目录 / slug | `alice-fund-compare` |
-| CLI 别名 | `afcmp` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FUND_COMPARE` |
+**技能简介**
 
-**介绍**：Wind Alice 基金对比分析 CLI：对多只基金做业绩、风险、持仓、管理四维度对比分析，支持客观中立与主观倾向性分析，输出含核心结论、优势、风险、投资建议的结构化报告。
-
-**English**：Wind Alice Fund Compare CLI - comprehensive comparative analysis of multiple funds across performance, risk, portfolio structure, and management assessment, supporting both objective neutral and subjective preference modes, for fund selection, replacement evaluation, portfolio optimization, due diligence, and investment education.
-
-**示例问法**：帮我对比一下华夏成长和易方达中小盘
-
-#### 基金筛选与投资建议 / Fund Screening & Investment Advisory
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **基金筛选与投资建议** |
-| 英文名（`--skill` 可用） | **Fund Screening & Investment Advisory** |
-| 目录 / slug | `alice-fund-screening-investment-advisory` |
-| CLI 别名 | `afsia` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FUND_SCREENING_INVESTMENT_ADVISORY` |
-
-**介绍**：Wind Alice 基金筛选与投资建议 CLI：多维度基金筛选、对比分析与个性化投资建议，输出含筛选结果、对比分析、配置建议与投资者画像匹配的结构化报告。
-
-**English**：Wind Alice Fund Screening & Investment Advisory CLI - professional fund screening, comparative analysis, and personalized investment recommendations for investment advisors, with multi-dimensional filtering by risk preference, objectives, and horizon, plus allocation suggestions aligned with investor profiles.
-
-**示例问法**：我是平衡型投资者，投资期限3年，帮我筛选几只合适的基金
-
-#### 基金涨跌解读 / Fund Performance Attribution Assistant
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **基金涨跌解读** |
-| 英文名（`--skill` 可用） | **Fund Performance Attribution Assistant** |
-| 目录 / slug | `alice-fund-performance-attribution` |
-| CLI 别名 | `afpa` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FUND_PERFORMANCE_ATTRIBUTION` |
-
-**介绍**：Wind Alice 基金涨跌解读 CLI：拆解基金或 ETF 一段时间内涨跌背后的持仓贡献、行业影响、事件驱动与宏观因素，并用图表呈现归因结果
-
-**English**：Wind Alice Fund Performance Attribution Assistant CLI - Helps retail clients understand why a fund or ETF went up or down over a selected period by breaking down fund performance, major holdings contribution, sector impact, news events, fund flows, fundamentals, and macro factors, with visual attribution charts. It is for explanation and observation only, and does not provide trading advice or return guarantees.
-
-**示例问法**：帮我分析一下易方达蓝筹精选最近一个月为什么跌了？
-
----
-
-### 固收 · 信用（3 个）
-
-#### 信用分析 / Credit Analysis
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **信用分析** |
-| 英文名（`--skill` 可用） | **Credit Analysis** |
-| 目录 / slug | `alice-credit-analysis` |
-| CLI 别名 | `aca` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_CREDIT_ANALYSIS` |
-
-**介绍**：Wind Alice 信用分析 CLI：对各类企业 / 机构主体做六大维度系统化信用研究，集成 Wind 风险评分提供更精准违约概率，输出含核心结论、优势、风险、投资建议的结构化报告。
-
-**English**：Wind Alice Credit Analysis CLI - systematic credit research across credit profile, industry risk, financial health, cash-flow quality, rating benchmarking, and default probability for any corporate / institutional entity (LGFV, SOE, private cos, listed cos, financial institutions, real-estate, bond issuers, etc.), integrated with Wind risk scoring for accurate PD estimation.
-
-**示例问法**：帮我分析一下宁德时代的信用资质？万科有没有短线机会？
-
-#### 债券利率走势研判 / Bond Rate Outlook
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **债券利率走势研判** |
-| 英文名（`--skill` 可用） | **Bond Rate Outlook** |
-| 目录 / slug | `alice-bond-rate-outlook` |
-| CLI 别名 | `abro` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_BOND_RATE_OUTLOOK` |
-
-**介绍**：Wind Alice 债券利率走势研判 CLI：支持交易/策略/配置多视角切换，覆盖五大维度系统化研判，输出含利率走势判断、量化评分、交易配置建议的结构化报告。
-
-**English**：Wind Alice Bond Rate Outlook CLI - systematic bond market interest rate trend analysis framework, supporting adaptive switching across trading (1-2 weeks), strategy (1-6 months), and allocation (6 months-2 years) perspectives, covering macro fundamentals, liquidity, supply-demand, yield curve structure, and technical sentiment, integrating quantitative scoring and stress testing.
-
-**示例问法**：今天债市怎么看？国债期货有没有短线机会？
-
-#### 通胀情景债券轮动策略 / Inflation Bond Strategy
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **通胀情景债券轮动策略** |
-| 英文名（`--skill` 可用） | **Inflation Bond Strategy** |
-| 目录 / slug | `alice-inflation-bond-strategy` |
-| CLI 别名 | `aibs` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_INFLATION_BOND_STRATEGY` |
-
-**介绍**：Wind Alice 通胀情景债券轮动策略 CLI：实时追踪 CPI/PPI 四种通胀拐点信号，自动判断当月是否持有债券或转持货币基金（可空仓模式），或在 5/7/10 年期国债指数间做久期轮动（不可空仓模式），支持风险预算约束下的配置优化与历史回测。
-
-**English**：Wind Alice Inflation Bond Strategy CLI - continuously tracks four types of inflation turning-point signals based on CPI/PPI, automatically determines whether to hold bonds or switch to money market funds (long/flat mode), or to rotate duration among 5/7/10-year government bond indices (fully invested mode), supporting allocation optimization under risk-budget constraints and historical NAV backtesting.
-
-**示例问法**：根据最新通胀数据，十年期国债债券怎么配置？
-
----
-
-### 宏观 · 资产配置（3 个）
-
-#### 宏观数据解读 / Macro Data Interpretation
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **宏观数据解读** |
-| 英文名（`--skill` 可用） | **Macro Data Interpretation** |
-| 目录 / slug | `alice-macro-data-interpretation` |
-| CLI 别名 | `amdi` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_MACRO_DATA_INTERPRETATION` |
-
-**介绍**：Wind Alice 宏观数据解读 CLI：将 CPI/PPI/PMI/GDP/社融/外贸/失业率/利率等宏观指标解读为结构化研究周报，输出结论摘要、核心数据、趋势结构分析与后续跟踪展望。
-
-**English**：Wind Alice Macro Data Interpretation CLI - transforms macroeconomic data into structured, publication-ready research commentary covering key conclusions, core data points, trend and structural drivers, and forward-looking tracking items for CPI, PPI, PMI, GDP, credit aggregates, trade, unemployment, and interest rates.
-
-**示例问法**：解读一下2025年1月CPI数据？通胀压力如何？
-
-#### 资产配置-行业轮动策略 / Asset Allocation - Sector Rotation Strategy
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **资产配置-行业轮动策略** |
-| 英文名（`--skill` 可用） | **Asset Allocation - Sector Rotation Strategy** |
-| 目录 / slug | `alice-asset-allocation-sector-rotation-strategy` |
-| CLI 别名 | `asrs` |
-| 版本 | 1.0.5 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_ASSET_ALLOCATION_SECTOR_ROTATION_STRATEGY` |
-
-**介绍**：Wind Alice 资产配置-行业轮动策略 CLI：分析未来 1-6 个月各行业相对强弱与权重倾斜，结合动量、资金面、估值与景气度因子输出超配/中性/低配清单、行业评分、约束检查与可选行业目标权重。
-
-**English**：Use when analyzing 1-6 month equity sector rotation and sector-level tilts, combining momentum, flows, valuation, and fundamentals to produce overweight/neutral/underweight lists, sector scores, constraint checks, and optional sector targets while keeping total equity exposure unchanged.
-
-**示例问法**：未来3个月哪些行业值得超配
-
-#### 资产配置-战略基准组合 / Asset Allocation - Strategic Baseline Portfolio
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **资产配置-战略基准组合** |
-| 英文名（`--skill` 可用） | **Asset Allocation - Strategic Baseline Portfolio** |
-| 目录 / slug | `alice-asset-allocation-strategic-baseline-portfolio` |
-| CLI 别名 | `aasbp` |
-| 版本 | 1.0.5 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_ASSET_ALLOCATION_STRATEGIC_BASELINE_PORTFOLIO` |
-
-**介绍**：Wind Alice 资产配置-战略基准组合 CLI：结合风险偏好、投资期限、约束与长期市场数据，制定 3-5 年战略资产配置基准组合，输出大类资产权重、区域目标、指数映射与预期风险收益。
-
-**English**：Use when building a 3-5 year strategic asset allocation baseline from risk profile, horizon, constraints, and long-term market data, producing asset-class weights, regional targets, index mapping, and expected risk/return for downstream sector rotation, TAA, portfolio construction, and rebalancing.
-
-**示例问法**：为养老金设计一个3-5年战略资产配置方案
-
----
-
-### 商品 · 期货（6 个）
-
-#### 商品智研助手 / Commodity Research Assistant
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **商品智研助手** |
-| 英文名（`--skill` 可用） | **Commodity Research Assistant** |
-| 目录 / slug | `alice-commodity-research-assistant` |
-| CLI 别名 | `acra` |
-| 版本 | 1.0.8 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_COMMODITY_RESEARCH_ASSISTANT` |
-
-**介绍**：Wind Alice 商品智研助手 CLI：输入期货品种名称或 Wind Code，自动生成涵盖价格、基差、基本面、远期曲线、资金、仓单、宏观等多维度的商品智能日报或专项分析，输出含核心驱动逻辑与明确结论的结构化报告。
-
-**English**：Wind Alice Commodity Research Assistant CLI - enter a commodity name or Wind Code to auto-generate smart research reports distilling core drivers across price, structure, capital flow, and fundamentals, with clear conclusions for institutional investors and professional traders.
-
-**示例问法**：沪铜日报？铁矿石有没有短线机会？
-
-#### AI商品策略师 / AI Commodity Strategist
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **AI商品策略师** |
-| 英文名（`--skill` 可用） | **AI Commodity Strategist** |
-| 目录 / slug | `alice-ai-commodity-strategist` |
-| CLI 别名 | `aacs` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_AI_COMMODITY_STRATEGIST` |
-
-**介绍**：Wind Alice AI商品策略师 CLI：覆盖能源、黑色、有色、化工、农产品、贵金属全板块的机构级策略输出，支持盘前/盘中/盘后三段运行
-
-**English**：Wind Alice AI Commodity Strategist CLI - Institutional-Grade Strategy Assistant for Commodity Futures, delivering full-cycle strategy outputs for traders, research analysts, portfolio managers, and industrial clients - spanning energy, ferrous metals, non-ferrous metals, chemicals, agricultural products, and precious metals. Operates across three sessions: Pre-Market (before 08:55 / before 20:55), Intraday (continuous trading during day session / night session), and Post-Market (after 15:00 / after 02:30).
-
-**示例问法**：今天的期货盘前策略
-
-#### 期货研报观点 / Futures Research Opinion
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期货研报观点** |
-| 英文名（`--skill` 可用） | **Futures Research Opinion** |
-| 目录 / slug | `alice-futures-research-opinion` |
-| CLI 别名 | `afro` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FUTURES_RESEARCH_OPINION` |
-
-**介绍**：Wind Alice 期货研报观点 CLI：聚合国内商品期货机构研报多空观点，计算 Wind 情绪评分，输出含观点分布、研报摘要与情绪走势的结构化报告。
-
-**English**：Wind Alice Futures Research Opinion CLI - aggregates research opinions on domestic commodity futures across major futures institutions, summarizes bullish, bearish, and neutral views by contract or commodity, and extracts the key investment logic behind each report. Enter a futures product and date to get a research-opinion report, institutional view distribution, Wind sentiment score, report summaries, and trend charts.
-
-**示例问法**：铜最近机构怎么看？
-
-#### 期货资金流向监测 / Futures Fund Flow Monitor
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期货资金流向监测** |
-| 英文名（`--skill` 可用） | **Futures Fund Flow Monitor** |
-| 目录 / slug | `alice-futures-fund-flow-monitor` |
-| CLI 别名 | `affm` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FUTURES_FUND_FLOW_MONITOR` |
-
-**介绍**：Wind Alice 期货资金流向监测 CLI：基于品种持仓额变化监测全市场、板块与单品种的资金流入流出异动，并结合历史统计评估 T+1/T+5 价格表现
-
-**English**：Wind Alice Futures Fund Flow Monitor CLI - Monitors fund inflows and outflows across domestic commodity futures by tracking changes in open-interest value at the market, sector, or individual product level. It combines current fund-flow changes with historical sample statistics to evaluate T+1 and T+5 price behavior after similar capital movements. Enter a futures product, sector, or date to get fund inflow/outflow rankings, capital-change metrics, price performance, short- and medium-term bullish or bearish opportunity screens, and a fund-flow daily report. Ideal for commodity researchers tracking market capital rotation, drafting daily reports, and for traders conducting pre-market opportunity screening and post-trade review.
-
-**示例问法**：今天商品期货资金整体是流入还是流出？
-
-#### 期货主力行为分析 / Futures Leading Institution Analysis
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期货主力行为分析** |
-| 英文名（`--skill` 可用） | **Futures Leading Institution Analysis** |
-| 目录 / slug | `alice-futures-leading-institution-analysis` |
-| CLI 别名 | `aflia` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FUTURES_LEADING_INSTITUTION_ANALYSIS` |
-
-**介绍**：Wind Alice 期货主力行为分析 CLI：分析期货公司代理席位的多空增减仓、净持仓、成交量排名、跨品种持仓与估算盈亏
-
-**English**：Wind Alice Futures Leading Institution Analysis CLI - Futures Leading Institution Analysis uses publicly disclosed futures member-position data to help you understand long and short positions, position changes, net position amounts, and cross-product exposure. It also tracks a member's historical positioning and estimated mark-to-market P&L for a selected contract. With ranking tables, trend charts, and watchlist highlights, it supports post-market review and market-structure monitoring. Results reflect aggregated client positions through member seats and do not represent proprietary views or investment advice.
-
-**示例问法**：今天螺纹钢的主力净多席位有哪些？
-
-#### 期货盘中异动归因 / Intraday Futures Move Attribution
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期货盘中异动归因** |
-| 英文名（`--skill` 可用） | **Intraday Futures Move Attribution** |
-| 目录 / slug | `alice-intraday-futures-move-attribution` |
-| CLI 别名 | `aifma` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_INTRADAY_FUTURES_MOVE_ATTRIBUTION` |
-
-**介绍**：Wind Alice 期货盘中异动归因 CLI：核验行情、量仓、板块联动、内外盘传导与事件线索，回答某品种为何拉升/跳水/放量/突破，或扫描全市场异动
-
-**English**：Wind Alice Intraday Futures Move Attribution CLI - Analyze intraday or daily unusual moves in commodity futures. Use it to explain why a futures product or contract rallied, sold off, broke out, moved on unusual volume, or to scan which commodity futures are unusual or worth monitoring today or on a specified date. The skill verifies price action, minute bars, daily cross-sections, volume/open interest, sector moves, related markets, and event signals, then produces a structured attribution or unusual-movers report.
-
-**示例问法**：螺纹钢刚才为什么突然拉升？
-
----
-
-### 期权 · 衍生品（3 个）
-
-#### 期权波动率洞察 / Option Volatility Insights
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期权波动率洞察** |
-| 英文名（`--skill` 可用） | **Option Volatility Insights** |
-| 目录 / slug | `alice-option-volatility-insights` |
-| CLI 别名 | `aovi` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_OPTION_VOLATILITY_INSIGHTS` |
-
-**介绍**：Wind Alice 期权波动率洞察 CLI：诊断期权 IV 估值、期限结构、Skew、PCR 与波动率曲面，识别市场异动并输出波动率报告
-
-**English**：Wind Alice Option Volatility Insights CLI - Analyze options volatility and market conditions across IV valuation, term structure, skew, PCR, volatility surfaces, and market anomalies. Generate diagnostics, signals, market scans, and reports for volatility trading and options sentiment analysis.
-
-**示例问法**：今天沪深 300 ETF 期权的波动率处于什么水平？
-
-#### 期权交易策略 / Options Trading Strategies
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期权交易策略** |
-| 英文名（`--skill` 可用） | **Options Trading Strategies** |
-| 目录 / slug | `alice-options-trading-strategies` |
-| CLI 别名 | `aots` |
-| 版本 | 1.0.5 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_OPTIONS_TRADING_STRATEGIES` |
-
-**介绍**：Wind Alice 期权交易策略 CLI：融合波动率信号构建、异动打分、策略推荐与情景汇总，输出五段式期权交易方案，适用于个股期权交易、期权怎么做、给出推荐方案
-
-**English**：Trading Skills for Single-Underlying Listed Options. By integrating volatility signal construction, unusual activity scoring, strategy recommendation, and scenario aggregation, it delivers a five-stage options trading solution. Applicable to equity options trading, guide on how to trade options, and actionable recommendation plans
-
-**示例问法**：帮我分析茅台期权的波动率环境
-
-#### 期权定价计算器 / Option Pricing Calculator
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **期权定价计算器** |
-| 英文名（`--skill` 可用） | **Option Pricing Calculator** |
-| 目录 / slug | `alice-option-pricing-calculator` |
-| CLI 别名 | `aopc` |
-| 版本 | 1.0.2 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_OPTION_PRICING_CALCULATOR` |
-
-**介绍**：Wind Alice 期权定价计算器 CLI：对香草、二元、障碍、亚式、触碰、鲨鱼鳍、累计及 Autocall/雪球/三层区间等期权做理论定价，输出 NPV 与希腊字母
-
-**English**：Wind Alice Option Pricing Calculator CLI - Option and structured-option theoretical pricing skill. Prices vanilla, binary, barrier, Asian, touch, shark-fin, accumulator, and Autocall/snowball/tri-tier range options; automatically fills in market parameters such as volatility and interest rates; outputs theoretical price (NPV) and Greeks; and supports re-pricing after parameter changes.
-
-**示例问法**：帮我算一下沪深 300 ETF 平值看涨期权的理论价格
-
----
-
-### 监管 · 政策（2 个）
-
-#### 证券业监管政策简报 / Securities Regulatory Policy Briefing
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **证券业监管政策简报** |
-| 英文名（`--skill` 可用） | **Securities Regulatory Policy Briefing** |
-| 目录 / slug | `alice-securities-regulatory-policy-briefing` |
-| CLI 别名 | `srpb` |
-| 版本 | 1.0.5 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_SECURITIES_REGULATORY_POLICY_BRIEFING` |
-
-**介绍**：Wind Alice 证券业监管政策简报 CLI：基于 Wind 监管法规数据库，获取指定时间范围内的证券行业监管政策，生成含政策详情、摘要、清单与机构分布统计的结构化简报，支持中英双语输出。
-
-**English**：Retrieve securities industry regulatory policies within a specified time range and generate structured policy summaries and checklist tables. Built on the Wind regulatory database, it covers the CSRC, SSE, SZSE, BSE, securities/fund/futures industry associations, and the NEEQ, delivering a bilingual structured briefing with policy details, summaries, a checklist, and issuer-distribution statistics.
-
-**示例问法**：查询近一周的证券监管政策
-
-#### 金融监管局处罚月报 / NFRA Monthly Enforcement Report
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **金融监管局处罚月报** |
-| 英文名（`--skill` 可用） | **NFRA Monthly Enforcement Report** |
-| 目录 / slug | `alice-nfra-monthly-enforcement-report` |
-| CLI 别名 | `nmre` |
-| 版本 | 1.0.5 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_NFRA_MONTHLY_ENFORCEMENT_REPORT` |
-
-**介绍**：Wind Alice 金融监管局处罚月报 CLI：基于国家金融监督管理总局（NFRA）及各地派出机构的公开处罚数据，按月汇总银行业、保险业、信托业等金融机构的行政处罚信息，生成含处罚概览、趋势分析与明细清单的三章结构化月报，支持中英双语输出。
-
-**English**：Generate an NFRA monthly enforcement report for a specified month. Built on public enforcement data from the National Financial Regulatory Administration (NFRA) and its local offices, it aggregates administrative penalties across banking, insurance, trust, and non-bank financial institutions, delivering a bilingual three-chapter report covering an enforcement overview, trend analysis, and penalty details.
-
-**示例问法**：帮我生成 2026 年 7 月的金融监管处罚月报
-
----
-
-### 通用研究 · 文档产出（4 个）
-
-#### 深度研究 / Deep Research
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **深度研究** |
-| 英文名（`--skill` 可用） | **Deep Research** |
-| 目录 / slug | `alice-deep-research` |
-| CLI 别名 | `adr` |
-| 版本 | 1.0.6 |
-| 预计耗时 | 15-30 分钟 |
-| 事件前缀 | `ALICE_DEEP_RESEARCH` |
-
-**介绍**：Wind Alice 深度研究 CLI：对任意主题进行结构化、多阶段深度研究，先澄清问题、界定研究范围与维度并确认研究计划，再调度多个并行子代理调研，最终汇总生成全面、详细的专业研究报告。
-
-**English**：Conducts structured, multi-stage deep research on any topic by clarifying the question, scoping the research dimensions, generating a confirmed research plan, dispatching parallel subagents for investigation, and producing a comprehensive final report. Use when the user asks for deep research, in-depth analysis, thorough investigation, comprehensive study, or any research task that requires broad coverage and detailed findings.
-
-**示例问法**：深度研究固态电池技术的商业化进展
-
-#### 事实核验 / Fact Check
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **事实核验** |
-| 英文名（`--skill` 可用） | **Fact Check** |
-| 目录 / slug | `alice-fact-check` |
-| CLI 别名 | `afc` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_FACT_CHECK` |
-
-**介绍**：Wind Alice 事实核验 CLI：粘贴含金融数据、公司声明或行业事件的文字，逐点验证并生成结构化核查报告，标明哪些准确、哪些有出入、哪些查不到。
-
-**English**：Wind Alice Fact Check CLI - verify financial information from external sources by pasting a passage with data, corporate claims, or industry events; get a structured report with point-by-point fact-checking showing what's accurate, off, or unverifiable.
-
-**示例问法**：帮我校验这段话里的数据是否准确：中国平安 2025 年净利润同比增长 47.8%
-
-#### 市场规模测算与战略建模 / Market Sizing & Strategic Modeling
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **市场规模测算与战略建模** |
-| 英文名（`--skill` 可用） | **Market Sizing & Strategic Modeling** |
-| 目录 / slug | `alice-market-sizing-strategic-modeling` |
-| CLI 别名 | `amssm` |
-| 版本 | 1.0.10 |
-| 预计耗时 | 2-15 分钟 |
-| 事件前缀 | `ALICE_MARKET_SIZING_STRATEGIC_MODELING` |
-
-**介绍**：Wind Alice 市场规模测算与战略建模 CLI：Top-down / Bottom-up 双路径交叉验证，结合多情景预测与敏感性分析，输出 Excel 市场规模模型与结构化研究报告。
-
-**English**：Wind Alice Market Sizing & Strategic Modeling CLI - builds structured, defensible market sizing models via top-down and bottom-up triangulation, with historical backfill, forward growth forecasts, scenario analysis, and sensitivity testing for strategic planning, due diligence, and investment evaluation.
-
-**示例问法**：测算中国AI大模型应用市场规模？未来5年CAGR如何？
-
-#### 幻灯片 / PPT Generator
-
-| 字段 | 值 |
-|------|-----|
-| 中文名（`--skill` 可用） | **幻灯片** |
-| 英文名（`--skill` 可用） | **PPT Generator** |
-| 目录 / slug | `alice-ppt-generator` |
-| CLI 别名 | `apg` |
-| 版本 | 1.0.5 |
-| 预计耗时 | 15-30 分钟 |
-| 事件前缀 | `ALICE_PPT_GENERATOR` |
-
-**介绍**：Wind Alice 幻灯片（PPT 生成）CLI：根据主题与结构化内容自动生成专业 PPT 报告，支持标题页、目录、章节页、图文排版与结论总结，适用于投资与金融汇报、商业与管理汇报、产品与市场展示、培训与教育课件等场景。
-
-**English**：Use this skill for gated PPTX delivery when the user needs a finance-grade or business-grade deck with multi-stage confirmation, structured quality gates, artifact-driven recovery, or controlled incremental revision. Use it for formal PPT generation and delivery workflows, not lightweight one-off PPT reading.
-
-**示例问法**：帮我做一份新能源汽车行业的投资研究 PPT，12 页
-
----
-
-## 附录 A：4 个专家（Experts）
-
-专家包与技能包的区别：专家包是**多轮对话型入口**，用户原话**原样透传不加前缀**，靠请求体 `data.activeSubAgent` 指定服务端子 Agent。
-
-| # | 中文名 | 英文名 | slug | 别名 | `activeSubAgent` |
-|---|--------|--------|------|------|------------------|
-| 1 | **WindAlice个股研究专家** | WindAlice Equity Research Expert | `alice-equity-research-expert` | `aere` | `equity-deep-research-agent` |
-| 2 | **WindAlice万得金融专家** | WindAlice Financial Expert | `alice-financial-copilot` | `afcop` | （不传，自身即总入口） |
-| 3 | **Wind Alice 会议专家** | Wind Alice Meeting Expert | `alice-meeting-expert` | `ame` | `meeting` |
-| 4 | **WindAlice财富管理顾问** | WindAlice Wealth Management Advisor | `alice-wealth-advisor` | `awa` | `advisor` |
-
-本仓已落地其中 3 个专家（第 2 项万得金融专家未落地）：[`wind-alice-equity-research-expert`](../skills/wind-alice-equity-research-expert)、[`wind-alice-wealth-advisor`](../skills/wind-alice-wealth-advisor)、[`wind-alice-meeting-expert`](../skills/wind-alice-meeting-expert)；技能包入口是 [`wind-alice`](../skills/wind-alice)。
-
-## 附录 B：请求体 `data` 字段
-
-| 字段 | 值 | 说明 |
-|------|-----|------|
-| `chatMode` | `"12"` | 固定 |
-| `originalChatMode` | `"4"` | 固定 |
-| `switchMode` | `"auto"` | 固定 |
-| `timezone` | `"Asia/Shanghai"` | 固定 |
-| `activeSubAgent` | 见附录 A | **仅专家包携带**，技能包不带 |
-| `metadata.key` | `Wind.WindSearch.ChatService.A2A` | 固定 |
-| `metadata.version` | `1.0.0` | 固定 |
-
-例子：
-Company One-Page Investment Memo（上市公司一页纸投资报告）
-技能简介
 为指定上市公司（A 股 / 港股 / 美股 / 全球市场）一键生成结构化的"一页纸投资报告"，从公司速览到投资逻辑、催化剂、财务估值、风险与操作建议，按卖方研究通行范式排布，便于在晨会、投决会、首次覆盖前快速形成观点。
 
-核心能力
-1. 公司速览与核心竞争力
-主营业务、商业模式、客户群体、产业链位置
-市场地位、市场份额、技术壁垒与差异化
-管理层背景与核心团队
-2. 投资逻辑提炼
-综合最新研报观点，提炼 3-5 条投资逻辑
-行业景气度、需求变化、竞争格局
-评级与目标价的近期变化
-3. 近期催化剂与跟踪指标
-近 3 个月已落地的重大事件（订单、产品、股东动向等）
-未来 1 年内值得关注的事件节点与跟踪指标
-海外市场进展、政策与监管变化
-4. 财务与估值分析
-历史与一致预测的营收、归母净利润、毛利率、净利率
-业务拆分（SOTP）数据
-估值矩阵：PE / PB / PS / EV-EBITDA / PEG 与可比公司估值对标
-估值数据缺失时按公开数据递推计算
-5. 风险评估与操作建议
-上行 / 下行风险，重点指向盈利预测关键假设
-1-2 个最可能破坏投资逻辑的核心风险
-综合结论与操作建议
-适用问题示例
-"帮我生成一份宁德时代的一页纸投资报告"
-"分析 NVDA 的投资价值"
-"贵州茅台的股票投资要点是什么？"
-"对 2513.HK 做一份快速分析"
-"Generate a one-pager for AAPL"
-输出形式
-完整一页纸投资报告（Markdown 结构化）
-中文提问输出中文；英文提问输出英文
-货币、单位、盈利指标根据上市地自动适配（A 股：人民币 / 归母净利润；美股：USD / Non-GAAP 等）
-历史与预测年份采用动态相对口径（YYYY-1A / YYYYE / YYYY+1E 等）
-版本
-当前版本：v2.2.0
+**核心能力**
+
+1. **公司速览与核心竞争力**
+   - 主营业务、商业模式、客户群体、产业链位置
+   - 市场地位、市场份额、技术壁垒与差异化
+   - 管理层背景与核心团队
+2. **投资逻辑提炼**
+   - 综合最新研报观点，提炼 3-5 条投资逻辑
+   - 行业景气度、需求变化、竞争格局
+   - 评级与目标价的近期变化
+3. **近期催化剂与跟踪指标**
+   - 近 3 个月已落地的重大事件（订单、产品、股东动向等）
+   - 未来 1 年内值得关注的事件节点与跟踪指标
+   - 海外市场进展、政策与监管变化
+4. **财务与估值分析**
+   - 历史与一致预测的营收、归母净利润、毛利率、净利率
+   - 业务拆分（SOTP）数据
+   - 估值矩阵：PE / PB / PS / EV-EBITDA / PEG 与可比公司估值对标
+   - 估值数据缺失时按公开数据递推计算
+5. **风险评估与操作建议**
+   - 上行 / 下行风险，重点指向盈利预测关键假设
+   - 1-2 个最可能破坏投资逻辑的核心风险
+   - 综合结论与操作建议
+
+**适用问题示例**
+
+- "帮我生成一份宁德时代的一页纸投资报告"
+- "分析 NVDA 的投资价值"
+- "贵州茅台的股票投资要点是什么？"
+- "对 2513.HK 做一份快速分析"
+- "Generate a one-pager for AAPL"
+
+**输出形式**
+
+- 完整一页纸投资报告（Markdown 结构化）
+- 中文提问输出中文；英文提问输出英文
+- 货币、单位、盈利指标根据上市地自动适配（A 股：人民币 / 归母净利润；美股：USD / Non-GAAP 等）
+- 历史与预测年份采用动态相对口径（YYYY-1A / YYYYE / YYYY+1E 等）
+
+**版本**：v2.2.0
+
+---
+
+## Stock DD List（上市公司调研问题清单）
+
+**技能简介**
+
+一键为任意上市公司生成买方视角的结构化调研问题清单。自动检索财务数据、券商研报、行业新闻与一致预期，产出一份可以直接带进管理层沟通的投资备忘：先给出看多看空两方逻辑，再落到 3-5 个值得深挖的议题和具体要问的问题。支持 A 股、港股及海外上市公司。
+
+**核心能力**
+
+1. **多源资料自动检索**
+   - 财务数据、券商研报、行业新闻、市场一致预期
+2. **看多 / 看空逻辑摘要**
+   - 双向列出核心多空论点，避免单边视角
+3. **深度议题提炼**
+   - 从资料中提炼 3-5 个最值得深挖的议题
+4. **管理层调研问题**
+   - 针对每个议题给出可直接提问的尖锐问题
+
+**适用问题示例**
+
+- "帮我生成比亚迪的调研问题清单"
+
+**输出形式**
+
+- 结构化投资备忘（含看多/看空逻辑摘要、3-5 个深度议题、管理层问题清单）
+- 覆盖 A 股、港股及海外上市公司
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Global Share Quarterly Earnings Review（全球上市公司季报点评）
+
+**技能简介**
+
+输入公司名称与报告期，一键生成卖方研究风格的财报点评。自动抽取财务数据、分析盈利能力、综合投资主题、参考一致预期并提示关键风险，交付一页纸结构化点评。覆盖 A 股、港股、美股及欧洲市场，并自动适配各地披露规则；也能识别业绩预告。
+
+**核心能力**
+
+1. **财务数据自动抽取**
+   - 按公司与报告期定位并提取财报数据
+   - 自动适配各上市地的披露规则
+2. **业绩回顾与盈利能力分析**
+   - 业绩表现回顾、盈利能力拆解
+3. **投资逻辑综合**
+   - 综合研报观点形成投资主题
+4. **盈利预测参考**
+   - 对照市场一致预期
+5. **风险提示**
+   - 标注关键风险点
+6. **业绩预告识别**
+   - 自动检测并处理预披露业绩
+
+**适用问题示例**
+
+- "帮我点评一下贵州茅台的最新季报"
+
+**输出形式**
+
+- 一页纸结构化财报点评
+- 覆盖 A 股、港股、美股、欧洲市场
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Comps Analysis（可比公司分析）
+
+**技能简介**
+
+构建机构级可比公司分析（Comps）。围绕目标公司选取可比公司集合，横向对比经营指标与估值倍数，并做统计基准分析，最终交付一份 Excel 工作簿加一份文字分析报告。
+
+**核心能力**
+
+1. **经营指标对比**
+   - 可比公司集合的经营数据横向对照
+2. **估值倍数对比**
+   - 多组估值倍数的同业比较
+3. **统计基准分析**
+   - 对可比公司群体做统计基准（分位、均值等）分析
+
+**适用问题示例**
+
+- "帮我做一份宁德时代的可比公司分析"
+- "比亚迪有没有短线机会？"
+
+**输出形式**
+
+- Excel 工作簿（可比公司分析模型）
+- 文字分析报告
+
+**版本**：v1.0.8　|　**预计耗时**：2-15 分钟
+
+---
+
+## Investment Idea Generation（投资标的创意与筛选）
+
+**技能简介**
+
+从全球市场主动发掘新的投资候选标的。既支持量化因子筛选，也支持主题驱动扫描，行业、市值、地域、风格等参数均可配置，最终输出带有逻辑论据、催化剂和风险提示的投资创意报告。
+
+**核心能力**
+
+1. **量化因子筛选**
+   - 按因子条件在全市场扫描候选标的
+2. **主题驱动扫描**
+   - 围绕特定主题横扫相关标的
+3. **筛选参数配置**
+   - 行业、市值、地域、投资风格可自定义
+4. **投资创意成稿**
+   - 每条创意附投资逻辑、催化剂与关键风险
+
+**适用问题示例**
+
+- "帮我找一些 A 股市场的价值股？"
+
+**输出形式**
+
+- 简明投资创意报告（含逻辑论据、催化剂、风险提示）
+- 覆盖全球市场
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Thematic Stock Screening（按主题选股）
+
+**技能简介**
+
+面向板块投资与概念股筛选。系统拆解一个市场主题的投资逻辑，用关键数据验证逻辑成熟度与兑现程度，识别出真正的受益标的，并给出估值位置（含历史 PE 分位）与可执行的交易视角。
+
+**核心能力**
+
+1. **主题逻辑拆解**
+   - 系统拆解市场叙事背后的投资逻辑
+2. **数据兑现验证**
+   - 用关键数据验证逻辑成熟度，区分真假受益
+3. **核心受益标的筛选**
+   - 筛出真正的受益标的并成表
+4. **估值与交易视角**
+   - 估值对比与历史 PE 分位，给出交易建议与风险证伪点
+
+**适用问题示例**
+
+- "如何参与AI算力主题？有哪些真受益标的？"
+
+**输出形式**
+
+- 受益标的表
+- 估值对比（含历史 PE 分位）
+- 交易建议与风险证伪点
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Broker Top Picks Tracker（券商金股追踪）
+
+**技能简介**
+
+汇总各大券商的月度金股推荐，按推荐频次与热度打分排名，摘要每只金股的推荐理由，并给出行业分布拆解与趋势图表。适合月度策略会、行业轮动分析和前置选股筛查。
+
+**核心能力**
+
+1. **多券商推荐汇总**
+   - 聚合各大券商月度金股名单
+2. **热度排名**
+   - 按推荐频次与热度评分排序
+3. **推荐理由摘要**
+   - 提炼每只金股的核心投资逻辑
+4. **行业分布与趋势**
+   - 行业分布拆解与近月变化趋势图表
+
+**适用问题示例**
+
+- "2026年5月有哪些券商金股？"
+- "医药生物有没有短线机会？"
+
+**输出形式**
+
+- 金股排行榜
+- 推荐理由摘要
+- 行业分布拆解与趋势图表
+
+**版本**：v1.0.8　|　**预计耗时**：2-15 分钟
+
+---
+
+## Institutional Holdings Insight（机构持仓透视）
+
+**技能简介**
+
+看清全球顶级投资机构究竟买了什么、卖了什么。输入机构或基金名称，即得一页纸持仓简报：完整的新建仓与清仓名单、按估算交易金额排序的最大买入与卖出、板块间资金流向，以及重仓股、环比历史与图表。对持股数量、组合权重、市值变化逐项分析。覆盖美股 13F、中国基金定期报告与香港披露。
+
+**核心能力**
+
+1. **新建仓 / 清仓名单**
+   - 完整列出本期新进与退出的标的
+2. **增减持排序**
+   - 按估算交易金额对最大买入与卖出排序
+3. **板块资金流向**
+   - 识别资金在板块之间的迁移
+4. **重仓与调仓轨迹**
+   - 重仓股名单、环比历史与图表呈现
+5. **持仓变动精细拆解**
+   - 逐项分析持股数量、组合权重与市值的变化
+
+**适用问题示例**
+
+- "桥水基金最新的 13F 持仓有什么变化？"
+
+**输出形式**
+
+- 一页纸持仓简报（含名单、排序、板块流向、图表）
+- 数据来源覆盖美股 13F、中国基金定期报告、香港披露
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+## A-Share Short-Term Strategy Report（A股短线策略报告）
+
+**技能简介**
+
+面向短线交易者的收盘复盘工具。每日收盘后自动拉取 Wind 涨停股、指数行情与板块表现，映射热点概念群，结合券商研报识别资金主线，输出含收盘综述、涨停板复盘与主线研判的结构化报告。
+
+**核心能力**
+
+1. **收盘数据自动拉取**
+   - 涨停股、指数收盘、板块涨跌
+2. **热点概念群梳理**
+   - 映射当日热点概念集群
+3. **资金主线识别**
+   - 结合券商研报判断资金轮动方向
+4. **收盘综述与涨停复盘**
+   - 指数表现、成交额、板块拆解
+5. **前瞻板块展望**
+   - 给出后续板块研判
+
+**适用问题示例**
+
+- "生成今日 A 股短线策略报告"
+
+**输出形式**
+
+- 结构化收盘复盘报告（收盘综述 + 涨停板复盘 + AI 主线研判 + 板块展望）
+
+**版本**：v1.0.8　|　**预计耗时**：2-15 分钟
+
+---
+
+# 基金
+
+## Fund Compare（基金对比分析）
+
+**技能简介**
+
+对多只基金做全面对比分析，覆盖业绩、风险、持仓结构、管理评估四个维度。既支持客观中立的平铺对比，也支持带主观倾向性的推荐分析，适用于基金优选、调仓替换评估、组合优化、尽职调查与投资者教育。
+
+**核心能力**
+
+1. **业绩对比**
+   - 多只基金收益表现横向对照
+2. **风险对比**
+   - 风险指标同口径比较
+3. **持仓结构对比**
+   - 组合结构与持仓特征拆解
+4. **管理评估**
+   - 基金经理与管理能力评价
+5. **双模式分析**
+   - 客观中立模式 / 主观倾向性模式可切换
+
+**适用问题示例**
+
+- "帮我对比一下华夏成长和易方达中小盘"
+
+**输出形式**
+
+- 结构化对比报告（核心结论 + 优势 + 风险 + 投资建议）
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Fund Screening & Investment Advisory（基金筛选与投资建议）
+
+**技能简介**
+
+面向投资顾问的基金筛选与建议工具。按风险偏好、投资目标、投资期限等多个维度过滤基金池，做对比分析，并给出与投资者画像相匹配的配置建议。
+
+**核心能力**
+
+1. **多维度基金筛选**
+   - 按风险偏好、投资目标、投资期限过滤
+2. **候选基金对比分析**
+   - 对筛选结果做横向比较
+3. **个性化配置建议**
+   - 给出与投资者画像对齐的配置方案
+4. **投资者画像匹配**
+   - 校验方案与客户画像的匹配度
+
+**适用问题示例**
+
+- "我是平衡型投资者，投资期限3年，帮我筛选几只合适的基金"
+
+**输出形式**
+
+- 结构化报告（筛选结果 + 对比分析 + 配置建议 + 投资者画像匹配）
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Fund Performance Attribution Assistant（基金涨跌解读）
+
+**技能简介**
+
+帮投资者搞清楚一只基金或 ETF 在某段时间里为什么涨、为什么跌。把区间业绩拆解为重仓股贡献、行业影响、新闻事件、资金流向、基本面与宏观因素，并用图表呈现归因结果。**仅用于解释与观察，不提供交易建议，也不承诺收益。**
+
+**核心能力**
+
+1. **区间业绩拆解**
+   - 按选定时间段拆解基金/ETF 涨跌
+2. **持仓贡献归因**
+   - 定位主要重仓股的贡献与拖累
+3. **行业与事件影响**
+   - 行业层面影响与新闻事件驱动
+4. **资金流与基本面**
+   - 申赎资金流向、基本面变化
+5. **宏观因素**
+   - 宏观环境对区间表现的影响
+6. **可视化归因**
+   - 图表呈现归因结果
+
+**适用问题示例**
+
+- "帮我分析一下易方达蓝筹精选最近一个月为什么跌了？"
+
+**输出形式**
+
+- 归因分析报告 + 可视化归因图表
+- 仅作解释与观察用途，不含交易建议与收益承诺
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+# 固收 · 信用
+
+## Credit Analysis（信用分析）
+
+**技能简介**
+
+对任意企业或机构主体做系统化信用研究，覆盖六大维度：信用概况、行业风险、财务健康度、现金流质量、评级对标与违约概率。集成 Wind 风险评分以提供更精准的违约概率（PD）估计。适用主体包括城投、国企、民企、上市公司、金融机构、房企、债券发行人等。
+
+**核心能力**
+
+1. **信用概况**
+   - 主体基本信用画像
+2. **行业风险**
+   - 所处行业的风险特征
+3. **财务健康度**
+   - 财务结构与偿债能力
+4. **现金流质量**
+   - 现金流的稳定性与质量
+5. **评级对标**
+   - 与同类主体的评级基准比较
+6. **违约概率测算**
+   - 集成 Wind 风险评分给出 PD 估计
+
+**适用问题示例**
+
+- "帮我分析一下宁德时代的信用资质？"
+- "万科有没有短线机会？"
+
+**输出形式**
+
+- 结构化信用报告（核心结论 + 优势 + 风险 + 投资建议）
+- 适用主体：城投、国企、民企、上市公司、金融机构、房企、债券发行人等
+
+**版本**：v1.0.8　|　**预计耗时**：2-15 分钟
+
+---
+
+## Bond Rate Outlook（债券利率走势研判）
+
+**技能简介**
+
+系统化的债市利率走势分析框架，可按需在三种视角间自适应切换：交易视角（1-2 周）、策略视角（1-6 个月）、配置视角（6 个月-2 年）。研判覆盖宏观基本面、流动性、供需、收益率曲线结构与技术情绪五大维度，并集成量化评分与压力测试。
+
+**核心能力**
+
+1. **三视角自适应切换**
+   - 交易（1-2 周）/ 策略（1-6 个月）/ 配置（6 个月-2 年）
+2. **五大维度系统研判**
+   - 宏观基本面、流动性、供需、收益率曲线结构、技术情绪
+3. **量化评分**
+   - 对各维度打分形成综合判断
+4. **压力测试**
+   - 极端情景下的利率表现测算
+
+**适用问题示例**
+
+- "今天债市怎么看？"
+- "国债期货有没有短线机会？"
+
+**输出形式**
+
+- 结构化报告（利率走势判断 + 量化评分 + 交易配置建议）
+
+**版本**：v1.0.8　|　**预计耗时**：2-15 分钟
+
+---
+
+## Inflation Bond Strategy（通胀情景债券轮动策略）
+
+**技能简介**
+
+基于 CPI/PPI 持续追踪四类通胀拐点信号，自动给出当月的债券配置动作：可空仓模式下判断持有债券还是转持货币基金；不可空仓模式下在 5 年 / 7 年 / 10 年期国债指数之间做久期轮动。支持风险预算约束下的配置优化与历史净值回测。
+
+**核心能力**
+
+1. **通胀拐点信号追踪**
+   - 基于 CPI/PPI 实时追踪四种拐点信号
+2. **可空仓模式**
+   - 判断当月持有债券或转持货币基金
+3. **不可空仓模式**
+   - 在 5/7/10 年期国债指数间做久期轮动
+4. **风险预算约束优化**
+   - 在给定风险预算下优化配置
+5. **历史回测**
+   - 历史净值回测验证策略表现
+
+**适用问题示例**
+
+- "根据最新通胀数据，十年期国债债券怎么配置？"
+
+**输出形式**
+
+- 当月配置动作建议 + 配置优化结果 + 历史回测净值
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+# 宏观 · 资产配置
+
+## Macro Data Interpretation（宏观数据解读）
+
+**技能简介**
+
+把宏观经济数据转化为可直接发布的结构化研究评论。覆盖 CPI、PPI、PMI、GDP、社融、外贸、失业率、利率等指标，输出结论摘要、核心数据、趋势与结构性驱动分析，以及后续需要跟踪的事项。
+
+**核心能力**
+
+1. **指标覆盖**
+   - CPI / PPI / PMI / GDP / 社融 / 外贸 / 失业率 / 利率
+2. **结论摘要**
+   - 先给判断，再给论据
+3. **核心数据呈现**
+   - 关键数据点整理
+4. **趋势与结构分析**
+   - 趋势变化与结构性驱动因素拆解
+5. **后续跟踪展望**
+   - 列出前瞻性跟踪项
+
+**适用问题示例**
+
+- "解读一下2025年1月CPI数据？"
+- "通胀压力如何？"
+
+**输出形式**
+
+- 结构化研究周报（可直接发布口径）
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Asset Allocation - Sector Rotation Strategy（资产配置-行业轮动策略）
+
+**技能简介**
+
+用于研判未来 1-6 个月的行业轮动与行业层面权重倾斜。结合动量、资金面、估值与景气度四类因子，输出超配 / 中性 / 低配清单、行业评分、约束检查与可选的行业目标权重，**在保持权益总仓位不变的前提下**做结构调整。
+
+**核心能力**
+
+1. **四因子行业打分**
+   - 动量、资金面、估值、景气度
+2. **超配/中性/低配清单**
+   - 给出明确的行业倾斜方向
+3. **约束检查**
+   - 校验配置方案是否满足约束条件
+4. **行业目标权重**
+   - 可选输出具体目标权重
+5. **总仓位中性**
+   - 只调结构，不改变权益总敞口
+
+**适用问题示例**
+
+- "未来3个月哪些行业值得超配"
+
+**输出形式**
+
+- 超配/中性/低配清单 + 行业评分 + 约束检查结果 + 可选行业目标权重
+
+**版本**：v1.0.5　|　**预计耗时**：2-15 分钟
+
+---
+
+## Asset Allocation - Strategic Baseline Portfolio（资产配置-战略基准组合）
+
+**技能简介**
+
+从风险偏好、投资期限、投资约束与长期市场数据出发，构建 3-5 年期的战略资产配置基准组合，输出大类资产权重、区域目标、指数映射与预期风险收益，可作为后续行业轮动、战术配置、组合构建与再平衡的基准。
+
+**核心能力**
+
+1. **输入条件建模**
+   - 风险偏好、投资期限、投资约束、长期市场数据
+2. **大类资产权重**
+   - 给出 3-5 年战略权重
+3. **区域目标与指数映射**
+   - 区域配置目标及对应指数
+4. **预期风险收益**
+   - 测算组合预期收益与风险
+5. **下游衔接**
+   - 作为行业轮动、战术配置、组合构建与再平衡的基准
+
+**适用问题示例**
+
+- "为养老金设计一个3-5年战略资产配置方案"
+
+**输出形式**
+
+- 战略配置方案（大类资产权重 + 区域目标 + 指数映射 + 预期风险收益）
+
+**版本**：v1.0.5　|　**预计耗时**：2-15 分钟
+
+---
+
+# 商品 · 期货
+
+## Commodity Research Assistant（商品智研助手）
+
+**技能简介**
+
+输入期货品种名称或 Wind Code，自动生成商品智能日报或专项分析。提炼价格、结构、资金与基本面上的核心驱动，覆盖价格、基差、基本面、远期曲线、资金、仓单、宏观等多个维度，面向机构投资者与专业交易员输出带明确结论的研究报告。
+
+**核心能力**
+
+1. **多维度数据整合**
+   - 价格、基差、基本面、远期曲线、资金、仓单、宏观
+2. **核心驱动提炼**
+   - 从价格、结构、资金流、基本面中提炼主导逻辑
+3. **日报与专项分析**
+   - 既可出品种日报，也可做专项深挖
+4. **明确结论**
+   - 报告落到清晰可用的结论
+
+**适用问题示例**
+
+- "沪铜日报？"
+- "铁矿石有没有短线机会？"
+
+**输出形式**
+
+- 商品智能日报 / 专项分析报告（含核心驱动逻辑与明确结论）
+
+**版本**：v1.0.8　|　**预计耗时**：2-15 分钟
+
+---
+
+## AI Commodity Strategist（AI商品策略师）
+
+**技能简介**
+
+面向商品期货的机构级策略助手，服务交易员、研究员、组合经理与产业客户。覆盖能源、黑色、有色、化工、农产品、贵金属全板块，并按交易时段分三段运行：盘前（08:55 前 / 20:55 前）、盘中（日盘 / 夜盘连续交易）、盘后（15:00 后 / 02:30 后）。
+
+**核心能力**
+
+1. **全板块覆盖**
+   - 能源、黑色、有色、化工、农产品、贵金属
+2. **盘前策略**
+   - 08:55 前 / 20:55 前输出开盘前策略
+3. **盘中跟踪**
+   - 日盘与夜盘连续交易时段的策略跟踪
+4. **盘后复盘**
+   - 15:00 后 / 02:30 后的收盘复盘
+5. **多角色适配**
+   - 交易员、研究员、组合经理、产业客户
+
+**适用问题示例**
+
+- "今天的期货盘前策略"
+
+**输出形式**
+
+- 机构级商品策略输出（按盘前/盘中/盘后时段适配）
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+## Futures Research Opinion（期货研报观点）
+
+**技能简介**
+
+聚合国内主要期货机构对商品期货的研报观点，按合约或品种归纳多头、空头与中性观点分布，并提取每篇研报背后的核心投资逻辑。输入品种与日期即可得到研报观点报告、机构观点分布、Wind 情绪评分、研报摘要与情绪走势图。
+
+**核心能力**
+
+1. **多机构研报聚合**
+   - 汇总国内主要期货机构观点
+2. **多空观点分布**
+   - 按合约或品种统计多/空/中性分布
+3. **投资逻辑提取**
+   - 提炼每篇研报的核心逻辑
+4. **Wind 情绪评分**
+   - 量化机构情绪
+5. **情绪走势追踪**
+   - 情绪变化趋势图表
+
+**适用问题示例**
+
+- "铜最近机构怎么看？"
+
+**输出形式**
+
+- 研报观点报告（观点分布 + Wind 情绪评分 + 研报摘要 + 情绪走势图）
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Futures Fund Flow Monitor（期货资金流向监测）
+
+**技能简介**
+
+通过跟踪持仓额变化，监测国内商品期货在全市场、板块与单品种层面的资金流入流出。把当期资金变化与历史样本统计结合，评估同类资金异动后 T+1 与 T+5 的价格表现。输入品种、板块或日期，即得资金流入流出排名、资金变动指标、价格表现、中短线多空机会筛查与资金流日报。
+
+**核心能力**
+
+1. **三层级资金监测**
+   - 全市场 / 板块 / 单品种
+2. **持仓额变化追踪**
+   - 以持仓额变化衡量资金流向
+3. **历史统计对照**
+   - 结合历史样本评估 T+1 / T+5 价格表现
+4. **多空机会筛查**
+   - 中短线多空机会扫描
+5. **资金流日报**
+   - 成稿的日度资金流报告
+
+**适用问题示例**
+
+- "今天商品期货资金整体是流入还是流出？"
+
+**输出形式**
+
+- 资金流入流出排名 + 资金变动指标 + 价格表现 + 机会筛查 + 资金流日报
+- 适用场景：商品研究员追踪资金轮动与写日报，交易员盘前筛查与盘后复盘
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+## Futures Leading Institution Analysis（期货主力行为分析）
+
+**技能简介**
+
+基于公开披露的期货会员持仓数据，解读多空持仓、持仓变化、净持仓金额与跨品种敞口，并追踪某会员在指定合约上的历史持仓与估算浮动盈亏。通过排名表、趋势图与自选高亮支持盘后复盘与市场结构监控。**数据反映的是会员席位下的客户合计持仓，不代表机构自营观点，也不构成投资建议。**
+
+**核心能力**
+
+1. **多空持仓与增减仓**
+   - 会员席位的多空持仓及其变化
+2. **净持仓金额**
+   - 净持仓规模测算
+3. **成交量排名**
+   - 席位成交量排序
+4. **跨品种持仓**
+   - 同一会员的跨品种敞口
+5. **历史持仓与估算盈亏**
+   - 指定合约上的历史持仓轨迹与浮动盈亏估算
+6. **可视化与自选**
+   - 排名表、趋势图、自选品种高亮
+
+**适用问题示例**
+
+- "今天螺纹钢的主力净多席位有哪些？"
+
+**输出形式**
+
+- 排名表 + 趋势图 + 自选高亮
+- 说明：数据为会员席位下客户合计持仓，非自营观点，不构成投资建议
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+## Intraday Futures Move Attribution（期货盘中异动归因）
+
+**技能简介**
+
+分析商品期货的盘中或日内异动。既能解释某个品种或合约为什么拉升、跳水、突破或放量，也能扫描当日（或指定日期）全市场哪些品种出现异动、值得关注。核验过程覆盖行情走势、分钟线、日线截面、量仓变化、板块联动、内外盘传导与事件线索，最终产出结构化归因报告或异动榜单。
+
+**核心能力**
+
+1. **单品种归因**
+   - 解释某品种/合约为何拉升、跳水、突破、放量
+2. **全市场异动扫描**
+   - 扫描当日或指定日期的异动品种
+3. **多源线索核验**
+   - 行情、分钟线、日线截面、量仓、板块联动、内外盘传导、事件信号
+4. **结构化成稿**
+   - 输出归因报告或异动榜单
+
+**适用问题示例**
+
+- "螺纹钢刚才为什么突然拉升？"
+
+**输出形式**
+
+- 结构化异动归因报告 / 全市场异动榜单
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+# 期权 · 衍生品
+
+## Option Volatility Insights（期权波动率洞察）
+
+**技能简介**
+
+分析期权波动率与市场状态，覆盖 IV 估值、期限结构、Skew、PCR、波动率曲面与市场异常，生成诊断、信号、市场扫描与报告，服务波动率交易与期权情绪分析。
+
+**核心能力**
+
+1. **IV 估值诊断**
+   - 判断隐含波动率所处水平
+2. **期限结构分析**
+   - 不同到期的波动率结构
+3. **Skew 与 PCR**
+   - 偏斜与认沽认购比分析
+4. **波动率曲面**
+   - 曲面形态刻画
+5. **市场异动识别**
+   - 识别波动率层面的异常
+6. **信号与扫描**
+   - 输出交易信号与全市场扫描
+
+**适用问题示例**
+
+- "今天沪深 300 ETF 期权的波动率处于什么水平？"
+
+**输出形式**
+
+- 波动率诊断报告、交易信号、市场扫描结果
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+## Options Trading Strategies（期权交易策略）
+
+**技能简介**
+
+面向单标的场内期权的交易技能。融合波动率信号构建、异动打分、策略推荐与情景汇总，交付五段式期权交易方案。适用于个股期权交易、"期权该怎么做"这类操作指引，以及需要可落地推荐方案的场景。
+
+**核心能力**
+
+1. **波动率信号构建**
+   - 从波动率维度构建交易信号
+2. **异动打分**
+   - 对异常活跃度打分
+3. **策略推荐**
+   - 给出具体期权策略
+4. **情景汇总**
+   - 汇总不同情景下的表现
+
+**适用问题示例**
+
+- "帮我分析茅台期权的波动率环境"
+
+**输出形式**
+
+- 五段式期权交易方案
+
+**版本**：v1.0.5　|　**预计耗时**：2-15 分钟
+
+---
+
+## Option Pricing Calculator（期权定价计算器）
+
+**技能简介**
+
+期权与结构化期权的理论定价工具。支持香草、二元、障碍、亚式、触碰、鲨鱼鳍、累计以及 Autocall / 雪球 / 三层区间等结构，自动补全波动率、利率等市场参数，输出理论价格（NPV）与希腊字母，并支持改参数后重新定价。
+
+**核心能力**
+
+1. **全品类期权定价**
+   - 香草、二元、障碍、亚式、触碰、鲨鱼鳍、累计
+2. **结构化产品定价**
+   - Autocall / 雪球 / 三层区间
+3. **市场参数自动补全**
+   - 自动填入波动率、利率等参数
+4. **NPV 与希腊字母**
+   - 输出理论价格与风险敏感度
+5. **参数调整重定价**
+   - 改参数后可重新计算
+
+**适用问题示例**
+
+- "帮我算一下沪深 300 ETF 平值看涨期权的理论价格"
+
+**输出形式**
+
+- 理论价格（NPV）+ 希腊字母
+
+**版本**：v1.0.2　|　**预计耗时**：2-15 分钟
+
+---
+
+# 监管 · 政策
+
+## Securities Regulatory Policy Briefing（证券业监管政策简报）
+
+**技能简介**
+
+检索指定时间范围内的证券行业监管政策，生成结构化的政策摘要与清单表格。基于 Wind 监管法规数据库，覆盖证监会、上交所、深交所、北交所、证券业协会 / 基金业协会 / 期货业协会以及全国股转系统，输出含政策详情、摘要、清单与发布机构分布统计的中英双语简报。
+
+**核心能力**
+
+1. **按时间范围检索**
+   - 指定区间内的监管政策全量检索
+2. **发布机构覆盖**
+   - 证监会、上交所、深交所、北交所、三大行业协会、全国股转系统
+3. **政策详情与摘要**
+   - 逐条政策详情及摘要提炼
+4. **清单表格**
+   - 结构化政策清单
+5. **机构分布统计**
+   - 按发布机构统计分布
+
+**适用问题示例**
+
+- "查询近一周的证券监管政策"
+
+**输出形式**
+
+- 结构化简报（政策详情 + 摘要 + 清单表格 + 机构分布统计）
+- 支持中英双语输出
+
+**版本**：v1.0.5　|　**预计耗时**：2-15 分钟
+
+---
+
+## NFRA Monthly Enforcement Report（金融监管局处罚月报）
+
+**技能简介**
+
+按指定月份生成国家金融监督管理总局（NFRA）处罚月报。基于 NFRA 及各地派出机构的公开处罚数据，汇总银行业、保险业、信托业及非银金融机构的行政处罚信息，交付含处罚概览、趋势分析与处罚明细三章的中英双语月报。
+
+**核心能力**
+
+1. **公开处罚数据汇总**
+   - 基于 NFRA 及各地派出机构公开数据
+2. **机构类型覆盖**
+   - 银行业、保险业、信托业、非银金融机构
+3. **处罚概览**
+   - 当月处罚总体情况
+4. **趋势分析**
+   - 处罚趋势变化
+5. **处罚明细清单**
+   - 逐条处罚明细
+
+**适用问题示例**
+
+- "帮我生成 2026 年 7 月的金融监管处罚月报"
+
+**输出形式**
+
+- 三章式结构化月报（处罚概览 / 趋势分析 / 明细清单）
+- 支持中英双语输出
+
+**版本**：v1.0.5　|　**预计耗时**：2-15 分钟
+
+---
+
+# 通用研究 · 文档产出
+
+## Deep Research（深度研究）
+
+**技能简介**
+
+对任意主题做结构化、多阶段的深度研究。先澄清问题、界定研究范围与维度并确认研究计划，再调度多个并行子代理分头调研，最终汇总成一份全面、详细的专业研究报告。适用于深度研究、深入分析、彻底调查、全面研究等需要广覆盖与细节的任务。
+
+**核心能力**
+
+1. **问题澄清**
+   - 先把研究问题问清楚
+2. **范围与维度界定**
+   - 确定研究边界与分析维度
+3. **研究计划确认**
+   - 生成计划并与用户确认后再执行
+4. **并行子代理调研**
+   - 调度多个子代理分头推进
+5. **汇总成稿**
+   - 汇总成完整详实的研究报告
+
+**适用问题示例**
+
+- "深度研究固态电池技术的商业化进展"
+
+**输出形式**
+
+- 全面、详细的专业研究报告
+
+**版本**：v1.0.6　|　**预计耗时**：15-30 分钟
+
+---
+
+## Fact Check（事实核验）
+
+**技能简介**
+
+核验来自外部渠道的金融信息。粘贴一段含数据、公司声明或行业事件的文字，逐点比对核实，产出结构化核查报告，明确标出哪些准确、哪些有出入、哪些查不到。
+
+**核心能力**
+
+1. **逐点核验**
+   - 把文本拆成可验证的事实点逐条核对
+2. **三态判定**
+   - 准确 / 有出入 / 无法验证
+3. **结构化核查报告**
+   - 逐点列出核验结论
+
+**适用问题示例**
+
+- "帮我校验这段话里的数据是否准确：中国平安 2025 年净利润同比增长 47.8%"
+
+**输出形式**
+
+- 结构化核查报告（逐点标注准确 / 有出入 / 查不到）
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## Market Sizing & Strategic Modeling（市场规模测算与战略建模）
+
+**技能简介**
+
+用 Top-down 与 Bottom-up 双路径交叉验证，构建结构化、经得起追问的市场规模模型。包含历史数据回补、未来增长预测、多情景分析与敏感性测试，服务战略规划、尽职调查与投资评估。
+
+**核心能力**
+
+1. **双路径交叉验证**
+   - Top-down 与 Bottom-up 相互印证
+2. **历史数据回补**
+   - 补齐历史规模数据
+3. **未来增长预测**
+   - 预测期规模与增速
+4. **多情景分析**
+   - 不同假设下的情景推演
+5. **敏感性测试**
+   - 关键假设的敏感性分析
+
+**适用问题示例**
+
+- "测算中国AI大模型应用市场规模？未来5年CAGR如何？"
+
+**输出形式**
+
+- Excel 市场规模模型
+- 结构化研究报告
+
+**版本**：v1.0.10　|　**预计耗时**：2-15 分钟
+
+---
+
+## PPT Generator（幻灯片）
+
+**技能简介**
+
+根据主题与结构化内容自动生成专业 PPT 报告，支持标题页、目录、章节页、图文排版与结论总结。面向需要多阶段确认、结构化质量把关与可控增量修订的正式 PPT 交付流程，适用于投资与金融汇报、商业与管理汇报、产品与市场展示、培训与教育课件等场景。
+
+**核心能力**
+
+1. **完整版式生成**
+   - 标题页、目录、章节页、图文排版、结论总结
+2. **多阶段确认**
+   - 生成过程分阶段与用户确认
+3. **结构化质量把关**
+   - 设置质量关卡，产物驱动的问题恢复
+4. **可控增量修订**
+   - 支持受控的逐步修改
+
+**适用问题示例**
+
+- "帮我做一份新能源汽车行业的投资研究 PPT，12 页"
+
+**输出形式**
+
+- PPTX 演示文稿
+- 适用场景：投资与金融汇报、商业与管理汇报、产品与市场展示、培训与教育课件
+- 定位为正式 PPT 生成与交付流程，非轻量一次性 PPT 阅读
+
+**版本**：v1.0.5　|　**预计耗时**：15-30 分钟
