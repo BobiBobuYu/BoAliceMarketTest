@@ -1,7 +1,7 @@
 {
   "name": "wind-alice-equity-research-expert",
   "version": "1.0.2",
-  "description": "CLI: 调用万得 Alice Agent（A2A SSE）的「个股研究专家」，activeSubAgent=equity-deep-research-agent，流式输出分析结果",
+  "description": "CLI: 万得 Alice「个股研究专家」（activeSubAgent: equity-deep-research-agent）— 面向二级市场的个股研究搭档，围绕公司基本面、财报与事件、估值位置及可证伪投资逻辑，形成有证据、有反方观点、可持续跟踪的研究判断，并交付带真实数据图表与来源的报告。",
   "type": "module",
   "private": true,
   "files": [

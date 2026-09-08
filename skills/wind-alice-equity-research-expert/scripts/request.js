@@ -455,7 +455,7 @@ function buildBody(prompt, skill = null) {
             kind: "data",
             data: {
               chatMode: "12",
-              // 专家包相对 wind-alice-equity-research-expert 唯一新增的字段：把会话路由到「个股研究专家」。
+              // 专家包相对 wind-alice 唯一新增的字段：把会话路由到「个股研究专家」。
               activeSubAgent: "equity-deep-research-agent",
               originalChatMode: "4",
               switchMode: "auto",
@@ -482,23 +482,38 @@ export function __buildBodyForTesting(prompt, skill = null) {
 
 function usage() {
   return [
-    "wind-alice-equity-research-expert — 调用万得 Alice Agent，执行指定 Skill 并流式输出分析结果",
+    "wind-alice-equity-research-expert — 调用万得 Alice「个股研究专家」（activeSubAgent: equity-deep-research-agent），流式输出分析结果",
+    "",
+    "面向二级市场的个股研究搭档，围绕公司基本面、财报与事件、估值位置及可证伪投资逻辑，形成有证据、有反方观点、可持续跟踪的研究判断，并交付带真实数据图表与来源的报告。",
     "",
     "Usage:",
-    '  wind-alice-equity-research-expert --prompt <QUESTION> [--skill <SKILL_NAME>]',
-    "  wind-alice-equity-research-expert list-skills",
+    "  wind-alice-equity-research-expert --prompt <QUESTION>",
     "  wind-alice-equity-research-expert --help",
     "",
     "Options:",
-    "  --prompt, -p <QUESTION>     用户提问（必填，list-skills 除外）",
-    "  --skill,  -s <SKILL_NAME>   要执行的 Alice Skill 名，**中英文均可**：",
-    "                                · 中文：如 \"上市公司调研问题清单\"",
-    "                                · 英文：如 \"Stock DD List\"",
-    "                                · 口语别名：如 \"信用报告\" → \"信用分析\"",
-    "                              英文部分忽略大小写/空格/连字符/下划线模糊匹配。",
-    "                              不传则走 auto。",
-    "  --list-skills               列出已知 Skill（等同子命令 list-skills）",
+    "  --prompt, -p <QUESTION>     用户提问（必填）。**原话透传**：不要改写、翻译、",
+    "                              组织语言或只提取股票代码，服务端要拿到完整原句。",
+    "  --skill,  -s <SKILL_NAME>   可选，专家场景**默认不要传**。仅当用户点名 Alice 的",
+    "                              某个子 Skill 时才用；会额外拼技能名前缀，与专家路由叠加。",
+    "  --list-skills               列出 wind-alice 已知子 Skill（本包一般用不到）",
     "  --help,   -h                查看帮助",
+    "",
+    "擅长领域:",
+    "  个股深研",
+    "  基本面分析",
+    "  商业模式",
+    "  竞争壁垒",
+    "  财报解读",
+    "  事件分析",
+    "  估值位置",
+    "  同业比较",
+    "  Thesis 跟踪",
+    "  Word 研报",
+    "",
+    "示例:",
+    "  wind-alice-equity-research-expert --prompt \"做一份英伟达（NVDA.O）的中报前瞻\"",
+    "  wind-alice-equity-research-expert --prompt \"解读腾讯控股（0700.HK）最新财报与预期差\"",
+    "  wind-alice-equity-research-expert --prompt \"深度研究中际旭创（300308.SZ）的投资逻辑与失效条件\"",
     "",
     "Env:",
     "  WIND_ALICE_API_URL          可选；默认 " + DEFAULT_API_URL,
@@ -520,7 +535,7 @@ function printSkillList() {
     console.log(`    说明：  ${s.descZh}`);
   }
   console.log(
-    "\n用法：wind-alice-equity-research-expert --prompt \"你的问题\" --skill \"<Skill 名（中/英）>\"",
+    "\n注意：本包是「个股研究专家」专家包，默认直接 wind-alice-equity-research-expert --prompt \"你的问题\" 即可（原话透传）；\n      只有用户点名下列某个子 Skill 时才需要 --skill \"<Skill 名（中/英）>\"。",
   );
   console.log(
     "提示：--skill 支持中文名（nameZh）、英文名（nameEn）及常见口语别名（如「信用报告」→「信用分析」）；英文部分忽略大小写与空白/连字符/下划线的模糊匹配。问句含中文时前缀为「使用「nameZh」技能：」，全英文时为 Using \"nameEn\" skill:。",

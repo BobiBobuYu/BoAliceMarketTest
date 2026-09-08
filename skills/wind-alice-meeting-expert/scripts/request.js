@@ -455,7 +455,7 @@ function buildBody(prompt, skill = null) {
             kind: "data",
             data: {
               chatMode: "12",
-              // 专家包相对 wind-alice-meeting-expert 唯一新增的字段：把会话路由到「会议专家」。
+              // 专家包相对 wind-alice 唯一新增的字段：把会话路由到「会议专家」。
               activeSubAgent: "meeting",
               originalChatMode: "4",
               switchMode: "auto",
@@ -482,23 +482,33 @@ export function __buildBodyForTesting(prompt, skill = null) {
 
 function usage() {
   return [
-    "wind-alice-meeting-expert — 调用万得 Alice Agent，执行指定 Skill 并流式输出分析结果",
+    "wind-alice-meeting-expert — 调用万得 Alice「会议专家」（activeSubAgent: meeting），流式输出分析结果",
+    "",
+    "作为你的会议专家，全程协助处理一场会议从会前到会后的关键工作，适合路演、业绩会、调研拜访等多个会议场景。",
     "",
     "Usage:",
-    '  wind-alice-meeting-expert --prompt <QUESTION> [--skill <SKILL_NAME>]',
-    "  wind-alice-meeting-expert list-skills",
+    "  wind-alice-meeting-expert --prompt <QUESTION>",
     "  wind-alice-meeting-expert --help",
     "",
     "Options:",
-    "  --prompt, -p <QUESTION>     用户提问（必填，list-skills 除外）",
-    "  --skill,  -s <SKILL_NAME>   要执行的 Alice Skill 名，**中英文均可**：",
-    "                                · 中文：如 \"上市公司调研问题清单\"",
-    "                                · 英文：如 \"Stock DD List\"",
-    "                                · 口语别名：如 \"信用报告\" → \"信用分析\"",
-    "                              英文部分忽略大小写/空格/连字符/下划线模糊匹配。",
-    "                              不传则走 auto。",
-    "  --list-skills               列出已知 Skill（等同子命令 list-skills）",
+    "  --prompt, -p <QUESTION>     用户提问（必填）。**原话透传**：不要改写、翻译、",
+    "                              组织语言或只提取股票代码，服务端要拿到完整原句。",
+    "  --skill,  -s <SKILL_NAME>   可选，专家场景**默认不要传**。仅当用户点名 Alice 的",
+    "                              某个子 Skill 时才用；会额外拼技能名前缀，与专家路由叠加。",
+    "  --list-skills               列出 wind-alice 已知子 Skill（本包一般用不到）",
     "  --help,   -h                查看帮助",
+    "",
+    "擅长领域:",
+    "  会议顾问",
+    "  研究分析",
+    "  业绩会",
+    "  路演会议",
+    "  调研拜访",
+    "",
+    "示例:",
+    "  wind-alice-meeting-expert --prompt \"未来一周有哪些上市公司业绩会召开？\"",
+    "  wind-alice-meeting-expert --prompt \"这场腾讯会议帮我参加下并做记录，参会名称使用“研究助手”，会议邀请链接：\"",
+    "  wind-alice-meeting-expert --prompt \"特斯拉最近一次业绩会讲了什么？\"",
     "",
     "Env:",
     "  WIND_ALICE_API_URL          可选；默认 " + DEFAULT_API_URL,
@@ -520,7 +530,7 @@ function printSkillList() {
     console.log(`    说明：  ${s.descZh}`);
   }
   console.log(
-    "\n用法：wind-alice-meeting-expert --prompt \"你的问题\" --skill \"<Skill 名（中/英）>\"",
+    "\n注意：本包是「会议专家」专家包，默认直接 wind-alice-meeting-expert --prompt \"你的问题\" 即可（原话透传）；\n      只有用户点名下列某个子 Skill 时才需要 --skill \"<Skill 名（中/英）>\"。",
   );
   console.log(
     "提示：--skill 支持中文名（nameZh）、英文名（nameEn）及常见口语别名（如「信用报告」→「信用分析」）；英文部分忽略大小写与空白/连字符/下划线的模糊匹配。问句含中文时前缀为「使用「nameZh」技能：」，全英文时为 Using \"nameEn\" skill:。",

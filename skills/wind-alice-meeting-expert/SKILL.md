@@ -1,23 +1,23 @@
 ---
 name: wind-alice-meeting-expert
-description: 调用万得 Alice「会议专家」（A2A 协议，SSE 流式）的 CLI 工具。覆盖路演、业绩会、调研拜访等场景的会前准备、会中 AI 参会记录与会后纪要复盘。当用户要求"查未来一周有哪些业绩会""让 AI 助手代为参加腾讯会议并做记录""查某公司最近一次业绩会讲了什么""整理会议问答与跟进事项"时使用。
+description: 万得 Alice「会议专家」CLI（A2A 协议，SSE 流式）。全程协助处理一场会议从会前到会后的关键工作，适合路演、业绩会、调研拜访等场景：会前检索会议对象与背景材料、梳理关注点风险点与问题清单；会中支持会议搜索预约和腾讯会议智能托管，安排 AI 助手按时参会并完成记录与实时转写；会后查询纪要、字幕、原文原话与关键问答并整理跟进事项。擅长会议顾问、研究分析、业绩会、路演会议、调研拜访。当用户问“未来一周有哪些上市公司业绩会召开？”“这场腾讯会议帮我参加下并做记录”“特斯拉最近一次业绩会讲了什么？”这类问题时使用。
 ---
 
 # wind-alice-meeting-expert
 
-> 一个 CLI：把用户**原话**送到万得 Alice Agent 接口，并在请求体里用 `activeSubAgent` 把会话路由到「会议专家」，按 SSE 流式拉取并打印 `agentResult.value`。
+> **会议专家（Wind Alice Meeting Expert）** — 作为你的会议专家，全程协助处理一场会议从会前到会后的关键工作，适合路演、业绩会、调研拜访等多个会议场景。
 
-派生自 `wind-alice`，**唯一的请求差异**是 `data` 里多带一个 `activeSubAgent` 字段；其余（鉴权、SSE 解析、附件下载、交付契约）与 `wind-alice` 完全一致。
+一个 CLI：把用户**原话**送到万得 Alice Agent 接口，并在请求体 `data` 里用 `activeSubAgent: "meeting"` 把会话路由到「会议专家」，按 SSE 流式拉取并打印 `agentResult.value`。派生自 `wind-alice`，**唯一的请求差异**就是这个字段；其余（鉴权、SSE 解析、附件下载、交付契约）与 `wind-alice` 完全一致。
 
 ---
 
 ## 专家介绍
 
-- **专家中文名**：会议专家
-- **专家英文名**：Wind Alice Meeting Expert
-- **activeSubAgent**：`meeting`
-
-**简介**：作为你的会议专家，全程协助处理一场会议从会前到会后的关键工作，适合路演、业绩会、调研拜访等多个会议场景。
+| 项 | 值 |
+|----|----|
+| 专家中文名 | 会议专家 |
+| 专家英文名 | Wind Alice Meeting Expert |
+| `activeSubAgent` | `meeting` |
 
 **能力介绍**：具备端到端会议协助能力，覆盖会议前、会议中和会议后的全流程支持。会前支持检索会议对象和背景材料，梳理关注点、风险点和问题清单，生成结构化会前准备材料；会中支持会议搜索、预约和腾讯会议智能托管，根据会议邀请信息安排 AI 助手按时参会，完成会议记录和实时转写；会后支持查询会议纪要、字幕、原文原话和关键问答，围绕指标或观点进行深入追问，并整理后续跟进事项。
 
@@ -68,7 +68,7 @@ description: 调用万得 Alice「会议专家」（A2A 协议，SSE 流式）�
 满足任一条件就用：
 
 - 用户点名要「会议专家」/ Alice 的这个专家来处理。
-- 用户的问题落在上面「擅长领域」里，且希望走 Alice 的专业链路而不是本地推理。
+- 用户的问题落在上面「擅长领域」里（会议顾问、研究分析、业绩会、路演会议、调研拜访），且希望走 Alice 的专业链路而不是本地推理。
 - 用户给的问句形态接近「示例问句」。
 
 不要用本技能的场景：
@@ -93,6 +93,7 @@ node scripts/wind-alice-meeting-expert.mjs --prompt "<USER_QUESTION>"
 
 ```bash
 node scripts/wind-alice-meeting-expert.mjs --prompt "未来一周有哪些上市公司业绩会召开？"
+node scripts/wind-alice-meeting-expert.mjs --prompt "特斯拉最近一次业绩会讲了什么？"
 ```
 
 5. 等流式输出结束后，按下方 [交付给用户](#交付给用户) 规则输出；等待期间若终端长时间无新输出，仍应继续等至进程退出，勿误判为卡死。
@@ -209,7 +210,7 @@ CLI 会在下载前把判定过程打到 stderr，附件没下来时看这几行
 
 ## 更新检查处理
 
-每次有效调用 `wind-alice-meeting-expert-meeting-expert.mjs` 结束后，脚本会静默触发后台更新检查：
+每次有效调用 `wind-alice-meeting-expert.mjs` 结束后，脚本会静默触发后台更新检查：
 
 - 只记录当前 skill 刚被使用，并后台启动 `scripts/update-check.mjs`，不阻塞 Alice 主请求收尾。
 - 后台检查会等待短暂 quiet window，避免 skill 正在使用时被更新覆盖。
