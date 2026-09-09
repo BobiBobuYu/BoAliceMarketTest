@@ -26,7 +26,7 @@ examples:
 <!-- ENCODING: UTF-8. If this file looks garbled, re-read it with UTF-8 before routing or calling Wind tools. -->
 
 # Wind 万得金融数据
-
+你好
 通过本地 CLI 调用 Wind 的 7 个 MCP 服务取数，只基于返回结果回答。只报告 Wind 返回值和必要限制，不补常识、不补点评。
 
 每个问题按四步处理：**① 定路由 → ② 发命令 → ③ 读回执 → ④ 收口**。②③ 之间可以按回执里的错误信息修正参数后再调用，每次再调用前都要过一遍第 3 节的自检项。
