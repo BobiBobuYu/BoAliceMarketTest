@@ -1,6 +1,6 @@
 # wind-skills
 
-> **Wind 万得金融 Skill 集合（monorepo）** · 通过 MCP 协议把万得金融数据接入 Claude / OpenClaw / Hermes 等 AI Agent，并一站式收录 wind 自家数据 + 社区分析工作流共 36 个金融 skill
+> **Wind 万得金融 Skill 集合（monorepo）** · 通过 MCP 协议把万得金融数据接入 Claude / OpenClaw / Hermes 等 AI Agent，并一站式收录 wind 自家数据 + 社区分析工作流共 39 个金融 skill
 
 [![GitHub](https://img.shields.io/badge/GitHub-Wind--Information--Co--Ltd%2Fwind--skills-blue?logo=github)](https://github.com/Wind-Information-Co-Ltd/wind-skills)
 
@@ -19,6 +19,7 @@
 | Skill                                                     | 能力域                                                                                                                              |
 | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | [`wind-mcp-skill`](./skills/wind-mcp-skill)                   | **访问万得 Wind 金融数据**：股票（A 股/港股/美股行情与财务）、基金（行情与全维数据）、指数/板块、债券、公司公告与新闻、宏观经济指标 |
+| [`wind-mcp-research-skill`](./skills/wind-mcp-research-skill) | **访问万得 Wind 投研级数据**：7 个 MCP 服务 132 个工具，覆盖全球行情与专业指标、新闻/公告/研报文档库、股票投研（画像/财务/预期/估值/资金/技术）、基金投研（净值/规模/持仓/归因）、宏观 EDB、期货、期权与定价、企业工商与风控 |
 | [`ifind-finance-data`](./skills/ifind-finance-data)           | **访问同花顺 iFinD 金融数据**：股票、基金、宏观经济、行业经济、新闻公告，支持智能选股/选基                                          |
 | [`mx-finance-data`](./skills/mx-finance-data)                 | **访问东方财富金融数据**：A 股/港股/美股、基金、债券等多资产行情与财务，输出 xlsx                                                   |
 | [`tushare-finance-skill`](./skills/tushare-finance-skill)     | **访问 Tushare Pro 金融数据**：A 股、港股、美股、基金、期货、债券、财务报表与宏观经济指标                                           |
@@ -28,6 +29,9 @@
 | Skill                                       | 能力域                                                                                                                              |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | [`wind-alice`](./skills/wind-alice)         | **Alice 专业金融分析 Agent 入口**：A2A 协议 + SSE 流式，跑 Alice 子 Skill（公司一页纸 / 调研问题清单 / 事实核验 / 财报点评 / 主题选股 / 基金分析 / 宏观、债券、信用分析 / 市场规模测算 / 可比公司分析） |
+| [`wind-alice-equity-research-expert`](./skills/wind-alice-equity-research-expert) | **Alice 个股研究专家**（`activeSubAgent: equity-deep-research-agent`）：个股深研、财报与事件解读、估值位置与同业比较、可证伪投资 Thesis |
+| [`wind-alice-wealth-advisor`](./skills/wind-alice-wealth-advisor) | **Alice 财富管理专家**（`activeSubAgent: advisor`）：客户洞察、产品研究与筛选、持仓诊断、资产配置、调仓再平衡、定投与保险保障 |
+| [`wind-alice-meeting-expert`](./skills/wind-alice-meeting-expert) | **Alice 会议专家**（`activeSubAgent: meeting`）：路演/业绩会/调研拜访的会前准备、会中 AI 参会记录、会后纪要与跟进 |
 
 ### 金融技能类
 
@@ -67,6 +71,7 @@
 > `wind-find-finance-skill` 是入口型 meta-skill，不调 MCP server、不需要 API Key。
 > `wind-mcp-skill` 用于访问万得 Wind 金融数据，按数据域分类调用。
 > `wind-alice` 是 Alice 专业金融分析 Agent 入口，跑 Alice 子 Skill 做综合分析，需要 API Key。
+> `wind-alice-equity-research-expert` / `wind-alice-wealth-advisor` / `wind-alice-meeting-expert` 是 `wind-alice` 的专家包分支：用户原话原样透传，靠请求体的 `activeSubAgent` 路由到对应专家，同样需要 API Key。
 
 ---
 
@@ -218,6 +223,9 @@ wind-skills/
     ├── mx-finance-data/            ← 东方财富金融数据
     ├── tushare-finance-skill/      ← Tushare Pro 金融数据
     ├── wind-alice/                 ← Alice 专业金融分析 Agent
+    ├── wind-alice-equity-research-expert/  ← Alice 个股研究专家
+    ├── wind-alice-wealth-advisor/          ← Alice 财富管理专家
+    ├── wind-alice-meeting-expert/          ← Alice 会议专家
     ├── a-share-primary-theme-identification/
     ├── backtest-expert/
     ├── breakout_candidate_finder_skill/
