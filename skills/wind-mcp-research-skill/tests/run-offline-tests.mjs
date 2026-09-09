@@ -67,17 +67,18 @@ async function runCli(argv, handler) {
 }
 
 // ---------- 1. 参数校验 ----------
-check('未知字段被拦截', () => {
-  const e = validateParams(schemaOf('company', 'company_get_judgments'), { companyKey: 'X', startDate: '2024-01-01' });
+check('未知字段被拦截，并提示注册表可能过期', () => {
+  const e = validateParams(schemaOf('company', 'company_get_judgments'), { companyKey: 'X', zzzNotAField: '2024-01-01' });
   eq(e?.code, 'PARAM_VALIDATION_ERROR');
-  assert(e.message.includes('startDate'), '错误信息应点名未知字段');
-  assert(e.message.includes('timeFrom'), '错误信息应给出允许字段');
+  assert(e.message.includes('zzzNotAField'), '错误信息应点名未知字段');
+  assert(e.message.includes('companyKey'), '错误信息应给出允许字段');
+  assert(e.message.includes('refresh'), '后端当天改过字段名，提示里要给出 refresh 这条出路');
 });
 
 check('缺必填被拦截', () => {
-  const e = validateParams(schemaOf('futures', 'futures_get_supply_demand'), { windCode: 'CU.SHF' });
+  const e = validateParams(schemaOf('futures', 'futures_get_fund_flow'), { windCode: 'CU.SHF' });
   eq(e?.code, 'PARAM_VALIDATION_ERROR');
-  assert(e.message.includes('type'), '应点名缺失的 type');
+  assert(e.message.includes('date'), '应点名缺失的 date');
 });
 
 check('类型不符被拦截', () => {
@@ -162,7 +163,7 @@ check('参数不是对象时报类型错', () => {
 check('--allow-unknown 只放行未知字段，不放行必填与枚举', () => {
   const s = schemaOf('futures', 'futures_get_supply_demand');
   eq(validateParams(s, { windCode: 'CU.SHF', type: 4, zzz: 1 }, { allowUnknown: true }), null);
-  eq(validateParams(s, { windCode: 'CU.SHF', zzz: 1 }, { allowUnknown: true })?.code, 'PARAM_VALIDATION_ERROR');
+  eq(validateParams(s, { type: 4, zzz: 1 }, { allowUnknown: true })?.code, 'PARAM_VALIDATION_ERROR');
 });
 
 // ---------- 2. 传输层 ----------
@@ -194,12 +195,46 @@ check('正常数据不被误判为业务错误', () => {
 });
 
 // ---------- 3. CLI 信封 ----------
-await checkAsync('成功调用输出数据对象与 cli_meta', async () => {
+await checkAsync('成功调用把后端 JSON 解包成 data，不留转义', async () => {
   const r = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"600519.SH"}'], simpleHandler({ toolText: '{"公司名称":"贵州茅台"}' }));
-  assert(r.json?.content?.[0]?.text?.includes('贵州茅台'), '应带回后端文本');
+  eq(r.json?.data?.公司名称, '贵州茅台', '后端 JSON 应解包成对象');
+  assert(!r.text.includes('\\"'), '解包后不该再有转义引号');
   eq(r.json.cli_meta.server, 'stock');
   eq(r.json.cli_meta.tool, 'stock_get_company_profile');
   eq(r.json.ok, undefined, '成功信封不应有 ok 字段');
+});
+
+await checkAsync('后端返回不是 JSON 时原样留在 text 字段', async () => {
+  const r = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"600519.SH"}'], simpleHandler({ toolText: '贵州茅台酒股份有限公司' }));
+  eq(r.json.text, '贵州茅台酒股份有限公司');
+  eq(r.json.data, undefined);
+});
+
+await checkAsync('大返回体附上顶层字段清单，--section 只取点名的那几段', async () => {
+  const big = JSON.stringify({ 甲: 'x'.repeat(3000), 乙: 'y'.repeat(3000), 丙: 'z' });
+  const full = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"600519.SH"}'], simpleHandler({ toolText: big }));
+  assert(full.json.cli_meta.sections?.甲 > 3000, '大返回体应列出各顶层字段的体量');
+  const part = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"600519.SH"}', '--section', '丙'], simpleHandler({ toolText: big }));
+  eq(part.json.data.丙, 'z');
+  eq(part.json.data.甲, undefined, '未点名的字段不应返回');
+  assert(part.json.cli_meta.dropped_sections.includes('甲'), '丢掉了什么要写进 cli_meta');
+  assert(part.text.length < 400, `--section 后应显著变小，实际 ${part.text.length}`);
+});
+
+await checkAsync('--section 点名不存在的字段时列出可选项，不静默返回空', async () => {
+  const r = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"600519.SH"}', '--section', '不存在的段'], simpleHandler({ toolText: '{"甲":1,"乙":2}' }));
+  eq(r.thrown?.code, 'USAGE_ERROR');
+  assert(r.thrown.message.includes('甲'), '要把可选字段列出来');
+});
+
+await checkAsync('半成功的 message 提到 cli_meta，不淹没在返回体里', async () => {
+  const r = await runCli(['call', 'index', 'get_index_price_indicators', '{"windcode":"000300.SH"}'], simpleHandler({ toolText: '{"data":{"rows":[[1]],"message":"无效的行情指标:不存在的指标"}}' }));
+  eq(r.json.cli_meta.backend_message, '无效的行情指标:不存在的指标');
+});
+
+await checkAsync('message 是 success 之类的正常标记时不误报', async () => {
+  const r = await runCli(['call', 'index', 'get_index_price_indicators', '{"windcode":"000300.SH"}'], simpleHandler({ toolText: '{"data":{"code":200,"message":"success","rows":[[1]]}}' }));
+  eq(r.json.cli_meta.backend_message, undefined);
 });
 
 await checkAsync('jsonrpc id 必须是整数', async () => {
@@ -241,8 +276,21 @@ await checkAsync('已知故障工具在错误信封里带 known_issue', async ()
   assert(r.json.known_issue, '应带 known_issue');
 });
 
+await checkAsync('嵌套 object 参数报类型错时直接给出样例形状', async () => {
+  const r = await runCli(['call', 'finance', 'quote_get_historical_data_series', '{"windCode":"600519.SH","params":"2026-08-01"}'], simpleHandler({}));
+  eq(r.json.code, 'PARAM_TYPE_ERROR');
+  eq(r.json.sample_value.params.rangeflag, 2, '应把实测样例里 params 那一段贴出来');
+  eq(r.calls.length, 0);
+});
+
+await checkAsync('标量参数报错时不塞样例，免得白占位置', async () => {
+  const r = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":123}'], simpleHandler({}));
+  eq(r.json.code, 'PARAM_TYPE_ERROR');
+  eq(r.json.sample_value, undefined);
+});
+
 await checkAsync('未知 server 报 ROUTE_ERROR', async () => {
-  const r = await runCli(['call', 'bond', 'x', '{}']);
+  const r = await runCli(['call', 'crypto', 'x', '{}']);
   eq(r.thrown?.code, 'ROUTE_ERROR');
 });
 
@@ -263,7 +311,7 @@ await checkAsync('参数文件不存在报 PARAMS_FILE_ERROR', async () => {
 });
 
 await checkAsync('校验失败时不发网络请求', async () => {
-  const r = await runCli(['call', 'futures', 'futures_get_supply_demand', '{"windCode":"CU.SHF"}'], simpleHandler({}));
+  const r = await runCli(['call', 'futures', 'futures_get_fund_flow', '{"windCode":"CU.SHF"}'], simpleHandler({}));
   eq(r.json.code, 'PARAM_VALIDATION_ERROR');
   eq(r.calls.length, 0, '本地拦截后不应发出任何请求');
 });
@@ -279,7 +327,7 @@ await checkAsync('选工具的命令全部离线', async () => {
 // 命令面越小，agent 走错路的机会越少。留下的五个各有不可替代的职责：
 // call 取数、find 选工具、describe 看契约、doctor 排障、refresh 重建。
 // 删掉的四个：list-tools / list-servers 被 references/*.md 和 SKILL.md 路由表覆盖，
-// diff 是 doctor 的子集，smoke 会打满 132 次真实请求、不该出现在 agent 的命令面上。
+// diff 是 doctor 的子集，smoke 会打满 134 次真实请求、不该出现在 agent 的命令面上。
 await checkAsync('命令面保持精简，且删掉的命令有明确去处', async () => {
   const usage = (await runCli([])).text;
   for (const cmd of ['call', 'find', 'describe', 'doctor', 'refresh']) {
@@ -330,10 +378,11 @@ await checkAsync('find 的命中项自带定工具与直接调所需的全部信
   const h = r.json.hits[0];
   eq(h.server, 'company');
   eq(h.tool, 'company_get_final_case');
-  for (const f of ['summary', 'boundary', 'params', 'sample', 'describe']) {
+  for (const f of ['summary', 'boundary', 'params', 'sample']) {
     assert(h[f], `命中项缺 ${f}`);
   }
-  assert(r.json.next, 'find 要给下一步提示');
+  assert(!h.describe, 'describe 命令改成末尾给一次模板，不再逐条重复');
+  assert(r.json.next?.includes('describe'), 'find 的下一步提示要点出 describe');
   assert(r.text.length < 1200, `find 单命中输出 ${r.text.length} 字，太大——它的价值就是比读目录便宜`);
 });
 
@@ -346,10 +395,19 @@ await checkAsync('find 会提示怎么把返回体压小', async () => {
   assert(h.narrow_response?.some((n) => n.includes('includeHistory')), `应提示 includeHistory，实际 ${JSON.stringify(h.narrow_response)}`);
 });
 
+await checkAsync('领域词优先命中该领域的 server，不被同词的邻居抢走', async () => {
+  const bond = await runCli(['find', '债券']);
+  eq(bond.json.hits[0].server, 'bond', `「债券」应先给 bond，实际 ${bond.json.hits[0].server}.${bond.json.hits[0].tool}`);
+  const index = await runCli(['find', '指数']);
+  eq(index.json.hits[0].server, 'index', `「指数」应先给 index，实际 ${index.json.hits[0].server}.${index.json.hits[0].tool}`);
+  const nav = await runCli(['find', '净值']);
+  eq(nav.json.hits[0].tool, 'fund_get_nav');
+});
+
 await checkAsync('find 的入参签名带上短枚举的含义', async () => {
   const r = await runCli(['find', 'futures_get_supply_demand']);
   const h = r.json.hits[0];
-  assert(/type\*:integer\(1=供需平衡\/2=供应\/3=需求\/4=库存\)/.test(h.params), `枚举应带标签，实际 ${h.params}`);
+  assert(/type:integer\(1=供需平衡\/2=供应\/3=需求\/4=库存\)/.test(h.params), `枚举应带标签，实际 ${h.params}`);
 });
 
 await checkAsync('抠不出标签时退回裸枚举，不给半截映射', async () => {
@@ -389,7 +447,7 @@ await checkAsync('find 宽泛关键词只对前几条给详情，其余只列名
 // 出错怎么办写在信封里而不是 SKILL.md 里：只在真出错时才付上下文成本。
 await checkAsync('每种错误码的信封都带可执行的 next', async () => {
   const cases = [
-    [['call', 'company', 'company_get_judgments', '{"companyKey":"X","startDate":"2024-01-01"}'], 'PARAM_VALIDATION_ERROR'],
+    [['call', 'company', 'company_get_judgments', '{"companyKey":"X","zzzNotAField":"2024-01-01"}'], 'PARAM_VALIDATION_ERROR'],
     [['call', 'edb', 'economic_get_indicator_series', '{"metricCodes":"M1","numOfObservation":"5"}'], 'PARAM_TYPE_ERROR'],
   ];
   for (const [argv, code] of cases) {
@@ -441,11 +499,11 @@ check('运行时只依赖 cli.mjs，构建时代码不进取数路径', () => {
 });
 
 // ---------- 4. 注册表与文档一致性 ----------
-check('7 个 server / 123 个工具齐全', () => {
+check('9 个 server / 134 个工具齐全', () => {
   const aliases = Object.keys(REG.servers);
-  eq(aliases.length, 7, 'server 数量');
+  eq(aliases.length, 9, 'server 数量');
   const total = aliases.reduce((n, a) => n + Object.keys(REG.servers[a].tools).length, 0);
-  assert(total >= 121, `工具总数应不少于 121，实际 ${total}`);
+  assert(total >= 132, `工具总数应不少于 132，实际 ${total}`);
 });
 
 check('每个工具都有实测样例入参，且样例本身能通过校验', () => {
@@ -477,7 +535,7 @@ check('每个 server 都有工具目录，且列全了自己的工具', () => {
 
 // 目录只该是目录：参数表、枚举、【适用场景】这些放进来会让 company 重新涨到 3.5 万字，
 // 而 agent 一次只用一个工具的参数。这条是防止有人「顺手补全一下文档」把上下文成本加回去。
-check('工具目录保持轻量：单份不超过 1 万字，7 份合计不超过 4 万字', () => {
+check('工具目录保持轻量：单份不超过 1 万字，9 份合计不超过 4.2 万字', () => {
   let total = 0;
   for (const alias of Object.keys(REG.servers)) {
     const md = readFileSync(join(SKILL_DIR, 'references', `${alias}.md`), 'utf8');
@@ -485,7 +543,7 @@ check('工具目录保持轻量：单份不超过 1 万字，7 份合计不超�
     assert(md.length <= 10000, `references/${alias}.md 有 ${md.length} 字，超出目录该有的体量——参数表应该留在 describe 里`);
     assert(!/^\| 参数 \| 必填 \|/m.test(md), `references/${alias}.md 混进了参数表，应该只留目录`);
   }
-  assert(total <= 42000, `7 份目录合计 ${total} 字，超标`);
+  assert(total <= 42000, `9 份目录合计 ${total} 字，超标`);
 });
 
 await checkAsync('describe 可以只取一个参数', async () => {
@@ -539,11 +597,12 @@ check('单个工具的 describe 输出足够小，可以按需取', () => {
   }
 });
 
-check('SKILL.md 路由表覆盖 7 个 server 并指向存在的契约', () => {
+check('SKILL.md 路由表覆盖 9 个 server 并指向存在的契约', () => {
   const md = readFileSync(join(SKILL_DIR, 'SKILL.md'), 'utf8');
+  assert(md.includes('references/<server>.md'), 'SKILL.md 要把 server 目录的位置说一次');
   for (const alias of Object.keys(REG.servers)) {
-    assert(md.includes(`\`${alias}\``), `SKILL.md 路由表缺 ${alias}`);
-    assert(md.includes(`references/${alias}.md`), `SKILL.md 未指向 references/${alias}.md`);
+    assert(md.includes(`| \`${alias}\` |`), `SKILL.md 路由表缺 ${alias}`);
+    assert(existsSync(join(SKILL_DIR, 'references', `${alias}.md`)), `references/${alias}.md 不存在`);
   }
 });
 

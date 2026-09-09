@@ -24,7 +24,7 @@
 | `quote_get_realtime_indicators` | 按一个或多个已明确的 Wind 代码查询全球金融标的最新行情快照，覆盖全球市场中的股票、债券、基金、指数、期货、外汇、衍生品等品种。 | 当有明确资产行情工具时不触发 | **windCodes**, **indexes** | `{"windCodes":"600519.SH,000858.SZ","indexes":"中文简称,最新成交价,涨跌幅"}` |
 | `quote_get_historical_data_series` | 按已明确的股票 Wind 代码、行情指标、周期和时间范围查询历史分时走势或 K 线数据。 | 当有明确资产历史分时走势或K线工具时不触发 | **windCode**, type, params | 参数较多，见 `describe` |
 | `general_search_indicators` | 按专业金融指标名称检索 Wind 指标元数据，返回指标名称、指标代码、参数定义和可复用的取数示例，并根据证券代码匹配相应市场的指标体系。 | 当用本能力是专业金融指标字典，不返回证券实际数值 | **keyword**, windCode, maxCount | `{"keyword":"收盘价","windCode":"600519.SH","maxCount":3}` |
-| `general_get_indicator_data` | 按明确的 Wind 证券代码和专业指标代码查询结构化金融指标数据，支持股票、债券、基金等证券品种的多证券、多指标批量取数，并可指定日期、复权、币种等计算参数。 | 当有明确资产历史分时走势或K线工具时不触发 | **windCode**, **indicatorCode**, parameter | `{"windCode":"600519.SH","indicatorCode":"s_dq_close"}` |
+| `general_get_indicator_data` | 按明确的证券代码和指标代码查询结构化金融指标数据，支持股票、债券、基金等证券品种的多证券、多指标批量取数，并可指定日期、复权、币种等计算参数。 | 当有明确资产历史分时走势或K线工具时不触发 | **windCode**, **indicatorCode**, parameter | `{"windCode":"600519.SH","indicatorCode":"s_dq_close"}` |
 | `general_search_datasets` | 按关键词搜索或浏览当前已配置的金融报表，为后续报表取数确定报表标识和输入条件。 | 本能力只发现报表及其取数条件，不返回报表记录 | keyword | `{"keyword":"股本"}` |
 | `general_get_dataset` | 按已确认的报表标识和对应条件读取当前已配置金融报表中的记录。 | 只查询当前已配置的报表，报表标识和 condition 必须与该报表的 inputSchema 对应 | **reportId**, **condition** | `{"reportId":"InstitutionalInvestors21","condition":{"windCode":"600519.SH"}}` |
 | `general_search_documents` | 在全球财经新闻、全球公司公告和全球研究报告库中检索文档清单，支持按文档类型、关键词、Wind 证券代码和发布日期范围组合筛选。 | 需要浏览、筛选或锁定文档时使用本能力 | **documentType**, keyword, windCode, startDate, endDate | `{"documentType":"news","keyword":"贵州茅台","startDate":"2026-08-01","endDate":"2026-09-04"}` |
@@ -38,7 +38,7 @@
 
 | 工具 | 问题 |
 | --- | --- |
-| `quote_get_realtime_indicators` | 2026-09-05 复测服务端不可用（3 次重试均返回「服务暂时不可用，请稍后重试」）；2026-09-04 曾正常 |
+| `quote_get_realtime_indicators` | 2026-09-05 起服务端持续不可用，2026-09-07 复测仍返回「服务暂时不可用，请稍后重试」（含全量冒烟在内共 3 次）。别重试，改用 `general_get_indicator_data`（按指标代码取值）或 `quote_get_historical_data_series`（最近一根 K 线）。 |
 | `general_search_documents` | schema 里 documentType 的**说明文字**写「可选值: 新闻、公告、研报」，但 enum 声明的是 news / na / rpp。实测两种都能调通且结果一致；一律按 enum 传英文值，与下游 general_get_document 保持一致。 |
 | `general_get_document` | 2026-09-05 实测：只返回元信息（标题、发布时间、来源、原文链接），`文档内容` 字段是**空串**——新闻和公告都取不到正文，研报则返回「无此研报权限」。要正文请改用 `general_query_documents`（自然语言检索，返回体带 content 正文/摘要）。样例里的 documentId 取自当日检索结果，可能过期，过期后需重新走 `general_search_documents` 拿新编号。 |
 | `general_query_documents` | `docType` 的枚举是数字字符串 `1`（新闻）/ `3`（公告），不是中文；`queryMode` 同样是 `1`/`2`/`3`。schema 说明里的中文只是标注含义，别当值传。研报不在本工具覆盖范围内。 |

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 冒烟测试：用 annotations.json 里的实测样例逐个真实调用工具。
-// 放在 tests/ 而不是 cli.mjs 里，是因为它会打满 132 次真实请求——不该出现在 agent 的命令面上。
+// 放在 tests/ 而不是 cli.mjs 里，是因为它会打满 134 次真实请求——不该出现在 agent 的命令面上。
 // 用法：node tests/run-smoke.mjs [server]
 import { readRegistry, validateParams, callTool } from '../scripts/cli.mjs';
 

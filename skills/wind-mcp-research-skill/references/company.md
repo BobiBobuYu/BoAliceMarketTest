@@ -10,7 +10,7 @@
 
 - **`companyKey` 不是证券代码**，是企业名称或统一社会信用代码（如「恒大地产集团有限公司」）。拿到用户给的股票代码或简称时，**先 `company_search_entity` 换成标准企业名**，再调用其余 53 个工具。
 - 本 server 覆盖**非上市主体**，这是它与 stock server 的分界：上市公司的财务、估值、行情走 stock；企业的工商、司法、失信、处罚记录走这里。
-- **日期字段分两派**：`company_get_court_announcements`、`company_get_court_sessions`、`company_get_filing_info`、`company_get_judgments`、`company_get_news_sentiment` 用 `timeFrom`/`timeTo`；其余带日期的工具一律 `startDate`/`endDate`。传错的一方会被**静默忽略**，静默返回默认区间（近 5 年）的全量数据而不报错——本 CLI 已在本地拦截未知字段。
+- **日期字段一律传 `startDate`/`endDate`**。`company_get_court_announcements`、`court_sessions`、`filing_info`、`judgments`、`news_sentiment` 五个工具的线上 schema 在 `timeFrom`/`timeTo` 与 `startDate`/`endDate` 之间来回滚过五轮，但后端**只认 `startDate`/`endDate`**：传 `timeFrom` 不报错、直接被吞，返回默认区间（近 5 年）的全量数据（2026-09-07 实测恒大 judgments：传 `timeFrom` 得 2,278 条，传 `startDate` 得 6 条）。**判据看返回标题有没有回显区间**——`# 企业裁判文书信息的查询结果（恒大地产集团有限公司；2026-01-01~2026-03-31）` 带括号才算生效，没括号就是被吞了。
 - 本 server 的 schema 在历史上反复变动（日期字段名改过 4 轮）。命中「参数被忽略」或「工具不存在」时先跑 `node scripts/cli.mjs refresh company` 对齐，再重试。
 - 54 个工具中 45 个只需 `companyKey`，选工具时按「要查什么记录」直接对照目录，不要用 `company_search_entity` 之外的工具做实体检索。
 - `companyKey` 接受**企业全称或统一社会信用代码**，是自然语言不是不可构造的 id。用户已给出唯一全称时可以直接传；只有拿到简称、品牌、曾用名，或可能匹配多个主体时，才先 `company_search_entity` 做主体匹配。
@@ -45,8 +45,8 @@
 | `company_list_supplier` | 查询企业的企业供应商公开记录。 | 采购关系与销售关系需区分 | **companyKey** | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_abnormal_operation` | 查询企业的经营异常名录查询公开记录。 | 只核查市场监管认定的经营异常名录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_bankruptcy_reorg` | 查询企业的破产重整信息查询公开记录。 | 只核查破产重整程序 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
-| `company_get_court_announcements` | 查询企业的法院公告查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, timeFrom, timeTo, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司"}` |
-| `company_get_court_sessions` | 查询企业的企业开庭公告查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, timeFrom, timeTo, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司"}` |
+| `company_get_court_announcements` | 查询企业的法院公告查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, startDate, endDate, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司","startDate":"2026-01-01","endDate":"2026-03-31"}` |
+| `company_get_court_sessions` | 查询企业的企业开庭公告查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, startDate, endDate, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司","startDate":"2026-01-01","endDate":"2026-03-31"}` |
 | `company_get_default_info` | 查询企业公开披露的非标资产风险记录。 | 只覆盖债券违约、商票逾期和非标资产风险 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_disciplinary_list` | 查询企业的企业惩戒名单查询公开记录。 | 只核查惩戒或监管名单 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_discredit` | 查询企业的失信被执行人查询公开记录。 | 只核查失信被执行人状态 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
@@ -54,18 +54,18 @@
 | `company_get_environment_penalty` | 查询企业的环保处罚查询公开记录。 | 只核查生态环境领域行政处罚 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_equity_pledged` | 查询企业的股权出质查询公开记录。 | 只核查股权出质登记 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_executed_persons` | 查询企业的被执行案件查询公开记录。 | 只核查一般被执行人及执行案件记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
-| `company_get_filing_info` | 查询企业的企业诉讼信息查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, timeFrom, timeTo, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司"}` |
+| `company_get_filing_info` | 查询企业的企业诉讼信息查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, startDate, endDate, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司","startDate":"2026-01-01","endDate":"2026-03-31"}` |
 | `company_get_final_case` | 查询企业的终本案件查询公开记录。 | 只核查终结本次执行程序记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_financial_leasing` | 查询企业的融资租赁登记查询公开记录。 | 只核查融资租赁登记事项 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_high_consumers` | 查询企业被法院限制高消费的公开记录。 | 只核查限制高消费记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_illegal_dishonesty` | 查询企业的严重违法失信查询公开记录。 | 只核查严重违法失信相关记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_illegal_tax` | 查询企业的税收违法记录查询公开记录。 | 只核查税收违法案件或处理记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
-| `company_get_judgments` | 查询企业的法律判决文书查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, timeFrom, timeTo, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司"}` |
+| `company_get_judgments` | 查询企业的法律判决文书查询公开记录。 | 不指定案由或当事人角色时可直接查询 | **companyKey**, startDate, endDate, causeOfAction, role | `{"companyKey":"恒大地产集团有限公司","startDate":"2026-01-01","endDate":"2026-03-31"}` |
 | `company_get_judicial_sales` | 查询企业的司法拍卖资产查询公开记录。 | 只核查司法拍卖或司法处置资产 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_land_acquisition` | 查询企业的国有土地受让公开记录。 | 只核查企业土地取得或土地交易记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_legal_notice` | 查询企业的法律送达公告查询公开记录。 | 只核查送达公告等法律文书公告 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_liquidation` | 查询企业的经营风险｜破产清算公开记录。 | 只核查破产清算或清算程序 | **companyKey** | `{"companyKey":"恒大地产集团有限公司"}` |
-| `company_get_news_sentiment` | 查询企业公开新闻报道和舆情信息。 | 不指定舆情标签时可直接查询 | **companyKey**, tagCode, emotionId, newsPenetrateEnable, timeFrom, timeTo | `{"companyKey":"恒大地产集团有限公司"}` |
+| `company_get_news_sentiment` | 查询企业公开新闻报道和舆情信息。 | 不指定舆情标签时可直接查询 | **companyKey**, tagCode, emotionId, newsPenetrateEnable, startDate, endDate | `{"companyKey":"恒大地产集团有限公司","startDate":"2026-01-01","endDate":"2026-03-31"}` |
 | `company_get_owing_tax` | 查询企业的企业欠税查询公开记录。 | 只核查欠税公告或欠缴税款信息 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_penalty_info` | 查询企业的行政处罚查询公开记录。 | 只核查一般行政处罚 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_share_lockup` | 查询企业司法协助中的股权冻结公开记录。 | 只核查股权司法冻结或查封等限制处分状态 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
@@ -73,6 +73,16 @@
 | `company_get_tax_abnormal` | 查询企业的税务非正常户查询公开记录。 | 只核查税务非正常户状态 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_valuation_inquiry` | 查询企业的资产询价查询公开记录。 | 只核查司法资产询价或评估前置记录 | **companyKey**, startDate, endDate | `{"companyKey":"恒大地产集团有限公司"}` |
 | `company_get_biz_enum` | 查询风控业务筛选所需的业务分类。 | 若需要完整案由、当事人角色或舆情标签，按“先取分类名、再取分类选项、最后带入相应筛选查询”的顺序使用 | **listType**, categoryName | `{"listType":1}` |
+
+## 已知故障
+
+| 工具 | 问题 |
+| --- | --- |
+| `company_get_court_announcements` | 日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。 |
+| `company_get_court_sessions` | 日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。 |
+| `company_get_filing_info` | 日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。 |
+| `company_get_judgments` | 日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。 |
+| `company_get_news_sentiment` | 日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。 |
 
 ## 本 server 最容易选错的
 

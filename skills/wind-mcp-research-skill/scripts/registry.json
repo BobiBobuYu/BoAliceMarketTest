@@ -90,7 +90,7 @@
             "windCodes": "600519.SH,000858.SZ",
             "indexes": "中文简称,最新成交价,涨跌幅"
           },
-          "knownIssue": "2026-09-05 复测服务端不可用（3 次重试均返回「服务暂时不可用，请稍后重试」）；2026-09-04 曾正常"
+          "knownIssue": "2026-09-05 起服务端持续不可用，2026-09-07 复测仍返回「服务暂时不可用，请稍后重试」（含全量冒烟在内共 3 次）。别重试，改用 `general_get_indicator_data`（按指标代码取值）或 `quote_get_historical_data_series`（最近一根 K 线）。"
         },
         "quote_get_historical_data_series": {
           "description": "【功能】按已明确的股票 Wind 代码、行情指标、周期和时间范围查询历史分时走势或 K 线数据。 【适用场景】查看全球市场金融品种的历史价格走势、分时数据或 K 线记录；按日、周、月等周期获取历史行情序列；提取历史价格序列用于后续分析。 【返回】返回指定金融品种在目标时间范围内的日期或时间点、行情指标值及对应周期数据，具体内容由所选指标、周期和时间范围决定。 【边界】当有明确资产历史分时走势或K线工具时不触发。只处理历史行情序列，不承担最新成交、盘口五档、板块行情、资金流向或财务指标查询。行情指标代码未知时，先查询可用行情指标；需要的是当前行情时进入最新行情快照。必须明确金融品种的代码、指标、周期和时间范围，不能在未指定具体金融品种时泛查市场走势。",
@@ -189,9 +189,9 @@
               },
               "windCode": {
                 "type": "string",
-                "title": "Wind证券代码",
+                "title": "证券代码",
                 "additionalProperties": false,
-                "description": "可选参数(Wind证券代码)，如 600000.SH / 0700.HK / 000001.SZ。传入后按证券品种过滤匹配路径与指标（A股偏内地股票树，港美股偏全球股票树）。"
+                "description": "可选参数(证券代码)，如 600000.SH / 0700.HK / 000001.SZ。传入后按证券品种过滤匹配路径与指标（A股偏内地股票树，港美股偏全球股票树）。"
               },
               "maxCount": {
                 "type": "integer",
@@ -213,19 +213,19 @@
           }
         },
         "general_get_indicator_data": {
-          "description": "【功能】按明确的 Wind 证券代码和专业指标代码查询结构化金融指标数据，支持股票、债券、基金等证券品种的多证券、多指标批量取数，并可指定日期、复权、币种等计算参数。 【适用场景】查询一个或多个证券的收盘价、总市值、市盈率、财务指标等结构化数值；批量比较多个证券或多个指标；按指定日期及个性化参数取得统一口径的数据。 【返回】按证券和指标返回名称、Wind 代码、指标值、日期、单位、币种及相关参数口径；批量请求按实际返回结果保留各证券、各指标之间的对应关系。 【边界】当有明确资产历史分时走势或K线工具时不触发。只有证券代码和专业指标代码均已明确时才进入取数；指标代码未知或同名指标尚未消歧时，先查询专业金融指标并复用其代码、参数和调用示例。最新盘中行情优先进入最新行情快照，历史分时或 K 线进入历史行情序列；新闻、公告、研报、年报正文等文本请求进入文档能力，不能作为结构化指标取数处理。",
+          "description": "【功能】按明确的证券代码和指标代码查询结构化金融指标数据，支持股票、债券、基金等证券品种的多证券、多指标批量取数，并可指定日期、复权、币种等计算参数。 【适用场景】查询一个或多个证券的收盘价、总市值、市盈率、财务指标等结构化数值；批量比较多个证券或多个指标；按指定日期及个性化参数取得统一口径的数据。 【返回】按证券和指标返回名称、Wind 代码、指标值、日期、单位、币种及相关参数口径；批量请求按实际返回结果保留各证券、各指标之间的对应关系。 【边界】当有明确资产历史分时走势或K线工具时不触发。只有证券代码和专业指标代码均已明确时才进入取数；指标代码未知或同名指标尚未消歧时，先查询专业金融指标并复用其代码、参数和调用示例。最新盘中行情优先进入最新行情快照，历史分时或 K 线进入历史行情序列；新闻、公告、研报、年报正文等文本请求进入文档能力，不能作为结构化指标取数处理。",
           "inputSchema": {
             "type": "object",
             "properties": {
               "windCode": {
                 "type": "string",
-                "title": "Wind证券代码",
-                "description": "Wind证券代码，例如：'600519.SH'（贵州茅台）。"
+                "title": "证券代码",
+                "description": "证券代码，例如：'600519.SH'（贵州茅台）。"
               },
               "indicatorCode": {
                 "type": "string",
                 "title": "指标代码",
-                "description": "来自指标搜索工具(general_search_indicators)查询到的指标代码。例如：收盘价(s_dq_close), 开盘价(s_dq_open)。"
+                "description": "来自指标搜索工具(general_search_indicators)查询到的指标代码。例如：收盘价(s_dq_close), 开盘价(s_dq_open)。先执行指标搜索工具(general_search_indicators)获取到指标代码及调用示例，再请求本工具获取指标数值。"
               },
               "parameter": {
                 "type": "object",
@@ -354,7 +354,7 @@
               "documentId": {
                 "type": "string",
                 "title": "文档编号",
-                "description": "文档编号,必填。用于指定需要获取详情的文档唯一标识,通常从general_search_documents的返回结果中获取。"
+                "description": "文档编号,必填。用于指定需要获取详情的文档唯一标识,通常通常从general_search_documents的返回结果中的文档编号中获取。"
               }
             },
             "required": [
@@ -2223,26 +2223,14 @@
         "龙虎榜"
       ],
       "confusable": "`futures_get_supply_demand` 的 `type=4`（品种整体库存水平）vs `futures_get_warehouse_receipt`（仓单与交割汇总）vs `futures_get_warehouse_receipt_details`（分仓库明细）——问「库存多少」用第一个。",
-      "toolCount": 6,
-      "paramCount": 20,
+      "toolCount": 7,
+      "paramCount": 22,
       "tools": {
         "futures_get_warehouse_receipt": {
           "description": "【功能】按业务类型、期货品种代码及日期查询期货品种的交割或仓单汇总，支持单品种、多品种和全市场。\n\n【适用场景】查询仓单总量；查看交割量及均价；比较品种仓单和基差；扫描全市场仓单汇总。\n\n【返回】交割返回日期、品种、单位、交割量、交割金额和交割均价；仓单返回日期、品种、单位、仓单量、收盘价、基差和现货基准价；不适用字段使用 null。\n\n【边界】交割数据按月、仓单数据按日；不提供仓库级明细、预测或图表；跨品种的吨、手、张、公斤或桶不可直接相加。",
           "inputSchema": {
             "type": "object",
-            "required": [
-              "type"
-            ],
             "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "delivery",
-                  "receipt"
-                ],
-                "title": "数据类型",
-                "description": "数据类型，需传入。决定返回哪些字段。可填英文系统值（delivery/receipt）或中文键（交割/仓单），两种写法等价。\n\n映射关系：\n• delivery = 交割\n• receipt = 仓单\n\n【填写样例】\n• 查交割数据 → \"delivery\" 或 \"交割\"\n• 查仓单数据 → \"receipt\" 或 \"仓单\"\n\n负向约束：\n• 同时提到「交割和仓单」「两种都要」 → 主动追问,禁止默认任一\n• 仅说「查一下」无 type 上下文 → 主动追问\n• 一次调用只能一个 type"
-              },
               "windCodes": {
                 "type": "array",
                 "items": {
@@ -2255,9 +2243,21 @@
                 "type": "string",
                 "title": "日期",
                 "description": "日期。格式 YYYY-MM-DD。填写示例：2026-07-08。"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "delivery",
+                  "receipt"
+                ],
+                "title": "数据类型",
+                "description": "数据类型，需传入。决定返回哪些字段。可填英文系统值（delivery/receipt）或中文键（交割/仓单），两种写法等价。\n\n映射关系：\n• delivery = 交割\n• receipt = 仓单\n\n【填写样例】\n• 查交割数据 → \"delivery\" 或 \"交割\"\n• 查仓单数据 → \"receipt\" 或 \"仓单\"\n\n负向约束：\n• 同时提到「交割和仓单」「两种都要」 → 主动追问,禁止默认任一\n• 仅说「查一下」无 type 上下文 → 主动追问\n• 一次调用只能一个 type\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，且是区分交割/仓单两套数据的唯一手段；不传默认返回仓单。"
               }
             }
           },
+          "extraParams": [
+            "type"
+          ],
           "sample": {
             "type": "receipt",
             "windCodes": [
@@ -2284,50 +2284,16 @@
               "fields": {
                 "type": "array",
                 "title": "字段子集",
-                "description": "【最高优先级铁律：用户中文提问→中文映射键入参】用户用中文提问时（如「查沪铜的保证金、手续费、交割方式」），LLM 识别每个中文业务词并按下表映射成「中文映射键」放入 fields 数组；系统 convert_enum_list 自动转英文系统值。也可直接传英文驼峰名。\n\n【双轨制】中文键、英文值、中英混合都接受；用户要多个字段 → 数组多值全列；宽泛问题（合约规格/合约信息）→ 不传 fields。\n\n【歧义词警示（必须用精确键）】\n• 「保证金」歧义 → 「保证金要求说明」(bailRemark) 或「交易保证金」(tradingDeposit)；不明确则两个都传\n• 「手续费」歧义 → 「交易手续费」(transactionFee) 或「平今手续费」(closingFee)；不明确则两个都传\n• 「交易所」歧义 → 「交易所英文简称」/「交易所中文简称」；不明确则两个都传\n• 「合约名称」歧义 → 「标准合约名称」/「标准合约简称」/「标准合约代码」/「交易代码」按语义选\n\n【常见词→精确键】合约规模/一手吨数→合约规模；合约乘数→合约乘数(-ator)；最小变动价位/一跳→最小报价单位说明；涨跌停板→日涨跌幅限制说明；交易时间→交易时间说明；延期补偿费率→延期补偿费率(-Rate)。\n\n【规则】1.字符串数组，可选，不传/空数组返回全部字段；2.英文大小写敏感；3.严禁传映射表外的中文词。\n\n【36 中文键→英文值】：标准合约名称→contractName、标准合约简称→contractShortName、标准合约代码→standardContractCode、交易代码→tradingCode、交易所英文简称→tradePlaceEnglishShortName、交易所中文简称→tradePlaceCNShortName、合约规模→contractScale、交易计量单位→tradeUnit、报价单位→quoteUnit、",
                 "items": {
-                  "type": "string",
-                  "enum": [
-                    "contractName",
-                    "contractShortName",
-                    "standardContractCode",
-                    "tradingCode",
-                    "tradePlaceEnglishShortName",
-                    "tradePlaceCNShortName",
-                    "contractScale",
-                    "tradeUnit",
-                    "quoteUnit",
-                    "leastQuoteUnit",
-                    "leastQuoteUnitEnglish",
-                    "contractMultiplicator",
-                    "dayIncreasementRatioRestrictedRemark",
-                    "bailRemark",
-                    "accountMonthRemark",
-                    "lastTradeDateRemark",
-                    "accountDayRemark",
-                    "accountPlaceRemark",
-                    "accountWayRemark",
-                    "accountClassRemark",
-                    "accountProduct",
-                    "subjectName",
-                    "contractDateRemark",
-                    "listingDate",
-                    "transactionFee",
-                    "closingFee",
-                    "tradingDeposit",
-                    "minimumAmountOfSingleQuote",
-                    "maximunAmountOfSingleQuote",
-                    "minimumAmountOfSettlementDeclaration",
-                    "neutralPositionDeclarationTime",
-                    "settlementDeclarationTime",
-                    "deferredCompensationPaymentDate",
-                    "deferredCompensationRate",
-                    "proportionOfLiquidatedDamages"
-                  ]
-                }
+                  "type": "string"
+                },
+                "description": "字段子集，只返回点名的字段，用来把返回体从 1,393 字压到几百字。\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，但**只收英文字段名**（contractName / tradingDeposit / transactionFee / …）——旧版说明里的中文映射键已失效，传中文会返回「未知的字段名：…。合法字段：…」的纯文本。不确定字段名就先不传，从全量返回里挑。"
               }
             }
           },
+          "extraParams": [
+            "fields"
+          ],
           "sample": {
             "windCode": "CU.SHF"
           }
@@ -2417,22 +2383,6 @@
           "inputSchema": {
             "type": "object",
             "properties": {
-              "type": {
-                "type": "integer",
-                "enum": [
-                  1,
-                  2,
-                  3,
-                  4,
-                  5,
-                  6,
-                  7,
-                  8,
-                  9
-                ],
-                "title": "排名类型",
-                "description": "排名类型，必填（1-9 整数）。映射关系：多头持仓/空头持仓/净多/净空/多头增仓/多头减仓/空头增仓/空头减仓/成交量 → 1/2/3/4/5/6/7/8/9。中文键与数字值等价。用户问「多头榜/做多排名」→ type=1；「净空榜」→ type=4；「增仓榜/加仓」→ 对应 5 或 7；「成交量榜」→ type=9。"
-              },
               "windCode": {
                 "type": "string",
                 "title": "证券代码",
@@ -2448,18 +2398,60 @@
                 "default": 20,
                 "title": "返回条数",
                 "description": "返回条数，可选，1-100 的整数，默认 20。用户说「前 N 名 / 前几名」→ 传对应数字（前五名→5，前十名→10）；未提及→不传（默认 20）。"
+              },
+              "type": {
+                "type": "integer",
+                "enum": [
+                  1,
+                  2,
+                  3,
+                  4,
+                  5,
+                  6,
+                  7,
+                  8,
+                  9
+                ],
+                "title": "排名类型",
+                "description": "排名类型，必填（1-9 整数）。映射关系：多头持仓/空头持仓/净多/净空/多头增仓/多头减仓/空头增仓/空头减仓/成交量 → 1/2/3/4/5/6/7/8/9。中文键与数字值等价。用户问「多头榜/做多排名」→ type=1；「净空榜」→ type=4；「增仓榜/加仓」→ 对应 5 或 7；「成交量榜」→ type=9。\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，也不再必填：不传会把九类排名一次全返（实测 4,672 字），传 type 只要 510 字。"
               }
             },
             "required": [
-              "type",
               "windCode"
             ]
           },
+          "extraParams": [
+            "type"
+          ],
           "sample": {
             "type": 1,
             "windCode": "CU.SHF",
             "date": "2026-09-03",
             "limit": 5
+          }
+        },
+        "futures_get_research_opinion": {
+          "description": "【功能】按单个期货品种和日期汇总公开研报的方向分类、统计结果、核心摘要及近 30 个交易日变化。\n\n【适用场景】查看当日研报方向分布；读取公开研报核心摘要；回溯分类计数变化；核对机构、标题和发布时间。\n\n【返回】返回品种、日期、多空中性计数、统计分值、核心摘要、逐篇研报明细；核心摘要和方向属于研报聚合内容，不是工具自行分析。\n\n【边界】仅支持品种级查询，不替代研报原文核验、行情查询或供需数据；收盘价和核心摘要可能为空；不输出交易建议或价格结论。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "windCode": {
+                "type": "string",
+                "title": "证券代码",
+                "description": "单个期货品种代码或名称。填写示例：CU.SHF / 沪铜。合约代码（如 CU2710.SHF）可直传，后端自动转主力合约。"
+              },
+              "date": {
+                "type": "string",
+                "title": "日期",
+                "description": "日期，可选。格式 YYYY-MM-DD，示例 2026-07-03。"
+              }
+            },
+            "required": [
+              "windCode"
+            ]
+          },
+          "sample": {
+            "windCode": "CU.SHF"
           }
         },
         "futures_get_supply_demand": {
@@ -2482,6 +2474,12 @@
                 "title": "截止日期",
                 "description": "截止日期，可选。格式 YYYY-MM-DD，示例 2026-06-19。"
               },
+              "includeHistory": {
+                "type": "boolean",
+                "default": true,
+                "title": "是否包含历史序列",
+                "description": "是否返回历史时间序列，布尔值，不传默认 true。用户只关心最新值→传 false；用户明确要走势/历史/序列时→传 true 或不传。"
+              },
               "type": {
                 "type": "integer",
                 "enum": [
@@ -2491,20 +2489,16 @@
                   4
                 ],
                 "title": "基本面类型",
-                "description": "基本面类型，必填。可选值：1-供需平衡（供需/平衡表），2-供应（供给/产量/进口），3-需求（消费/出口），4-库存（社会库存/仓单/港口库存）。用户问「库存/仓单」→4；问「产量/供应/供给/进口」→2；问「需求/消费/出口」→3；问「供需平衡/平衡表」→1。"
-              },
-              "includeHistory": {
-                "type": "boolean",
-                "default": true,
-                "title": "是否包含历史序列",
-                "description": "是否返回历史时间序列，布尔值，不传默认 true。用户只关心最新值→传 false；用户明确要走势/历史/序列时→传 true 或不传。"
+                "description": "基本面类型，必填。可选值：1-供需平衡（供需/平衡表），2-供应（供给/产量/进口），3-需求（消费/出口），4-库存（社会库存/仓单/港口库存）。用户问「库存/仓单」→4；问「产量/供应/供给/进口」→2；问「需求/消费/出口」→3；问「供需平衡/平衡表」→1。\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，也不再必填：不传按「全部」返回（实测 7,612 字），type=4 只要 1,597 字。"
               }
             },
             "required": [
-              "windCode",
-              "type"
+              "windCode"
             ]
           },
+          "extraParams": [
+            "type"
+          ],
           "sample": {
             "windCode": "CU.SHF",
             "type": 4,
@@ -2589,12 +2583,11 @@
                 "title": "交易日",
                 "description": "交易日（格式为YYYY-MM-DD）。查询上市期权品种期限的日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-06-15"
+                "default": "2026-09-01"
               }
             },
             "required": [
-              "windCode",
-              "tradeDate"
+              "windCode"
             ]
           },
           "sample": {
@@ -2608,9 +2601,7 @@
             "type": "object",
             "description": "用于获取指定期限下期权链的截面快照，包括合约明细、量价行情及风险参数。",
             "required": [
-              "optionVarietyCode",
-              "tradeDate",
-              "expiryDate"
+              "optionVarietyCode"
             ],
             "properties": {
               "optionVarietyCode": {
@@ -2625,7 +2616,8 @@
                 "title": "交易日",
                 "description": "交易日（格式为YYYY-MM-DD）。查询上市期权品种期限的日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-06-15"
+                "example": "2026-06-01",
+                "default": "2026-06-01"
               },
               "expiryDate": {
                 "type": "string",
@@ -2633,7 +2625,8 @@
                 "title": "到期日",
                 "description": "期权到期日（格式为YYYY-MM-DD）。指定要获取哪个期限下的期权链。通常由上游工具 `options_get_listed_terms` 的返回结果中获取。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-07-22"
+                "example": "2026-09-01",
+                "default": "2026-09-01"
               },
               "underlyingPrice": {
                 "type": "number",
@@ -2765,7 +2758,7 @@
                 "title": "开始日期",
                 "description": "开始日期（格式为YYYY-MM-DD）。时序数据查询的起始日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-05-01"
+                "default": "2026-06-01"
               },
               "endDate": {
                 "type": "string",
@@ -2773,14 +2766,12 @@
                 "title": "结束日期",
                 "description": "结束日期（格式为YYYY-MM-DD）。时序数据查询的结束日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-07-07"
+                "default": "2026-09-01"
               }
             },
             "required": [
               "optionContractCodes",
-              "indicators",
-              "startDate",
-              "endDate"
+              "indicators"
             ]
           },
           "sample": {
@@ -2839,7 +2830,7 @@
                 "title": "开始日期",
                 "description": "开始日期（格式为YYYY-MM-DD）。时序数据查询的起始日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-05-01"
+                "default": "2026-06-01"
               },
               "endDate": {
                 "type": "string",
@@ -2847,7 +2838,7 @@
                 "title": "结束日期",
                 "description": "结束日期（格式为YYYY-MM-DD）。时序数据查询的结束日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-07-07"
+                "default": "2026-09-01"
               },
               "tenor": {
                 "type": "string",
@@ -2925,9 +2916,7 @@
             },
             "required": [
               "windCodes",
-              "indicator",
-              "startDate",
-              "endDate"
+              "indicator"
             ]
           },
           "sample": {
@@ -2946,9 +2935,7 @@
             "description": "获取期权品种指标区间统计数据。包含获取历史区间指标均值，方差，最大值，最小值，中位数，以及30%，50%，70%，90%分位数",
             "required": [
               "windCodes",
-              "indicator",
-              "startDate",
-              "endDate"
+              "indicator"
             ],
             "properties": {
               "windCodes": {
@@ -2987,7 +2974,7 @@
                 "title": "开始日期",
                 "description": "开始日期（格式为YYYY-MM-DD）。时序数据查询的起始日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-05-01"
+                "default": "2026-06-01"
               },
               "endDate": {
                 "type": "string",
@@ -2995,7 +2982,7 @@
                 "title": "结束日期",
                 "description": "结束日期（格式为YYYY-MM-DD）。时序数据查询的结束日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-07-07"
+                "default": "2026-09-01"
               },
               "tenor": {
                 "type": "string",
@@ -3092,8 +3079,6 @@
               "spotPrice",
               "optionType",
               "strikePrice",
-              "expirationDate",
-              "valuationDate",
               "volatility",
               "riskFreeRate",
               "dividendYield"
@@ -3136,14 +3121,14 @@
                 "type": "string",
                 "title": "到期日期",
                 "description": "到期日期 (YYYY-MM-DD)。",
-                "example": "2025-12-27"
+                "default": "2026-09-01"
               },
               "valuationDate": {
                 "type": "string",
                 "title": "估值日期",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
                 "description": "估值日期 (YYYY-MM-DD)。",
-                "example": "2024-05-20"
+                "default": "2026-08-01"
               },
               "volatility": {
                 "type": "number",
@@ -3213,8 +3198,7 @@
             "type": "object",
             "description": "获取标的资产的波动率曲面数据。",
             "required": [
-              "windCode",
-              "time"
+              "windCode"
             ],
             "properties": {
               "windCode": {
@@ -3227,7 +3211,7 @@
                 "type": "string",
                 "title": "查询时间",
                 "description": "查询时间，格式：YYYY-MM-DD HH:mm。参考标的代码所在本地时区",
-                "example": "2025-11-26 10:00"
+                "default": "2026-09-01 10:00"
               }
             }
           },
@@ -3242,9 +3226,7 @@
             "type": "object",
             "description": "获取期权标的隐含波动率锥",
             "required": [
-              "windCode",
-              "startDate",
-              "endDate"
+              "windCode"
             ],
             "properties": {
               "windCode": {
@@ -3256,12 +3238,14 @@
               "startDate": {
                 "type": "string",
                 "description": "开始日期（YYYY-MM-DD格式）。",
-                "title": "开始日期"
+                "title": "开始日期",
+                "default": "2026-06-01"
               },
               "endDate": {
                 "type": "string",
                 "description": "结束日期（YYYY-MM-DD格式）。",
-                "title": "结束日期"
+                "title": "结束日期",
+                "default": "2026-09-01"
               }
             }
           },
@@ -3278,8 +3262,7 @@
             "description": "获取期权标的隐含波动率期限结构数据",
             "required": [
               "windCode",
-              "moneyness",
-              "time"
+              "moneyness"
             ],
             "properties": {
               "windCode": {
@@ -3296,7 +3279,8 @@
               "time": {
                 "type": "string",
                 "title": "查询时间",
-                "description": "查询时间，格式：YYYY-MM-DD HH:mm。参考标的代码所在本地时区"
+                "description": "查询时间，格式：YYYY-MM-DD HH:mm。参考标的代码所在本地时区",
+                "default": "2026-09-01 10:00"
               }
             }
           },
@@ -3316,8 +3300,6 @@
               "spotPrice",
               "optionType",
               "strikePrice",
-              "expirationDate",
-              "valuationDate",
               "volatility",
               "riskFreeRate",
               "dividendYield"
@@ -3362,14 +3344,14 @@
                 "type": "string",
                 "title": "到期日期",
                 "description": "到期日期 (YYYY-MM-DD)。",
-                "example": "2025-12-27"
+                "default": "2026-09-01"
               },
               "valuationDate": {
                 "type": "string",
                 "title": "估值日期",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
                 "description": "估值日期 (YYYY-MM-DD)。",
-                "example": "2024-05-20"
+                "default": "2026-08-01"
               },
               "volatility": {
                 "type": "number",
@@ -3449,9 +3431,7 @@
           "inputSchema": {
             "type": "object",
             "required": [
-              "windCode",
-              "startDate",
-              "endDate"
+              "windCode"
             ],
             "properties": {
               "windCode": {
@@ -3465,14 +3445,14 @@
                 "title": "开始日期",
                 "description": "开始日期（格式为 YYYY-MM-DD）。时序数据查询的起始日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-05-01"
+                "default": "2026-06-01"
               },
               "endDate": {
                 "type": "string",
                 "title": "结束日期",
                 "description": "结束日期（格式为 YYYY-MM-DD）。时序数据查询的结束日期。",
                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                "example": "2026-07-07"
+                "default": "2026-09-01"
               },
               "termCount": {
                 "type": "integer",
@@ -3508,7 +3488,7 @@
       "guidance": [
         "**`companyKey` 不是证券代码**，是企业名称或统一社会信用代码（如「恒大地产集团有限公司」）。拿到用户给的股票代码或简称时，**先 `company_search_entity` 换成标准企业名**，再调用其余 53 个工具。",
         "本 server 覆盖**非上市主体**，这是它与 stock server 的分界：上市公司的财务、估值、行情走 stock；企业的工商、司法、失信、处罚记录走这里。",
-        "**日期字段分两派**：`company_get_court_announcements`、`company_get_court_sessions`、`company_get_filing_info`、`company_get_judgments`、`company_get_news_sentiment` 用 `timeFrom`/`timeTo`；其余带日期的工具一律 `startDate`/`endDate`。传错的一方会被**静默忽略**，静默返回默认区间（近 5 年）的全量数据而不报错——本 CLI 已在本地拦截未知字段。",
+        "**日期字段一律传 `startDate`/`endDate`**。`company_get_court_announcements`、`court_sessions`、`filing_info`、`judgments`、`news_sentiment` 五个工具的线上 schema 在 `timeFrom`/`timeTo` 与 `startDate`/`endDate` 之间来回滚过五轮，但后端**只认 `startDate`/`endDate`**：传 `timeFrom` 不报错、直接被吞，返回默认区间（近 5 年）的全量数据（2026-09-07 实测恒大 judgments：传 `timeFrom` 得 2,278 条，传 `startDate` 得 6 条）。**判据看返回标题有没有回显区间**——`# 企业裁判文书信息的查询结果（恒大地产集团有限公司；2026-01-01~2026-03-31）` 带括号才算生效，没括号就是被吞了。",
         "本 server 的 schema 在历史上反复变动（日期字段名改过 4 轮）。命中「参数被忽略」或「工具不存在」时先跑 `node scripts/cli.mjs refresh company` 对齐，再重试。",
         "54 个工具中 45 个只需 `companyKey`，选工具时按「要查什么记录」直接对照目录，不要用 `company_search_entity` 之外的工具做实体检索。",
         "`companyKey` 接受**企业全称或统一社会信用代码**，是自然语言不是不可构造的 id。用户已给出唯一全称时可以直接传；只有拿到简称、品牌、曾用名，或可能匹配多个主体时，才先 `company_search_entity` 做主体匹配。"
@@ -4234,14 +4214,14 @@
                 "minLength": 2,
                 "maxLength": 50
               },
-              "timeFrom": {
+              "startDate": {
                 "type": "string",
                 "title": "查询起始时间",
                 "description": "查询起始时间，YYYY-MM-DD 格式（如 2026-01-18），默认为5年前",
                 "minLength": 10,
                 "maxLength": 10
               },
-              "timeTo": {
+              "endDate": {
                 "type": "string",
                 "title": "查询结束时间",
                 "description": "查询结束时间，YYYY-MM-DD 格式（如 2026-05-18）。默认取当前日期（今天）",
@@ -4250,7 +4230,7 @@
               },
               "causeOfAction": {
                 "title": "案由列表",
-                "description": "可选的数组参数，用于按“案由”过滤结果，不传时返回全部，以下 enum 为常见案由。如需更完整的案由列表，请调用 company_get_biz_num(listType=2, categoryName=\"案由\") 获取完整案由列表后传入。",
+                "description": "可选的数组参数，用于按“案由”过滤结果，不传时返回全部，以下 enum 为常见案由。如需更完整的案由列表，请调用 company_get_biz_enum(listType=2, categoryName=\"案由\") 获取完整案由列表后传入。",
                 "enum": [
                   "合同、无因管理、不当得利纠纷",
                   "与公司、证券、保险、票据等有关的民事纠纷",
@@ -4271,7 +4251,7 @@
               },
               "role": {
                 "title": "当事人角色列表",
-                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_num(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
+                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_enum(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
                 "enum": [
                   "原告",
                   "被告",
@@ -4295,9 +4275,16 @@
               "companyKey"
             ]
           },
+          "extraParams": [
+            "startDate",
+            "endDate"
+          ],
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
-          }
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。"
         },
         "company_get_court_sessions": {
           "description": "【功能】查询企业的企业开庭公告查询公开记录。\n\n【适用场景】核查企业的企业开庭公告查询；用于尽职调查、合规核对或业务关系梳理。\n\n【返回】如有公开记录，返回开庭公告案号、案由、开庭时间、开庭法院和当事人身份信息；没有公开记录时明确提示无匹配记录。\n\n【边界】不指定案由或当事人角色时可直接查询；需要完整筛选项时，先按业务分类获取对应选项，再将选项带入本查询。仍需区分开庭安排、法院公告、立案信息和裁判结果。",
@@ -4311,14 +4298,14 @@
                 "minLength": 2,
                 "maxLength": 50
               },
-              "timeFrom": {
+              "startDate": {
                 "type": "string",
                 "title": "查询起始时间",
                 "description": "查询起始时间，YYYY-MM-DD 格式（如 2026-01-18），默认为5年前",
                 "minLength": 10,
                 "maxLength": 10
               },
-              "timeTo": {
+              "endDate": {
                 "type": "string",
                 "title": "查询结束时间",
                 "description": "查询结束时间，YYYY-MM-DD 格式（如 2026-05-18）。默认取当前日期（今天）",
@@ -4327,7 +4314,7 @@
               },
               "causeOfAction": {
                 "title": "案由列表",
-                "description": "可选的数组参数，用于按“案由”过滤结果，不传时返回全部，以下 enum 为常见案由。如需更完整的案由列表，请调用 company_get_biz_num(listType=2, categoryName=\"案由\") 获取完整案由列表后传入。",
+                "description": "可选的数组参数，用于按“案由”过滤结果，不传时返回全部，以下 enum 为常见案由。如需更完整的案由列表，请调用 company_get_biz_enum(listType=2, categoryName=\"案由\") 获取完整案由列表后传入。",
                 "enum": [
                   "合同、无因管理、不当得利纠纷",
                   "与公司、证券、保险、票据等有关的民事纠纷",
@@ -4348,7 +4335,7 @@
               },
               "role": {
                 "title": "当事人角色列表",
-                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_num(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
+                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_enum(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
                 "enum": [
                   "原告",
                   "被告",
@@ -4372,9 +4359,16 @@
               "companyKey"
             ]
           },
+          "extraParams": [
+            "startDate",
+            "endDate"
+          ],
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
-          }
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。"
         },
         "company_get_default_info": {
           "description": "【功能】查询企业公开披露的非标资产风险记录。\n\n【适用场景】核查企业是否存在非标资产风险公告；按企业主体核对公开风险记录。\n\n【返回】如有公开记录，返回企业非标资产风险公告日期、非标资产名称、风险类型和金额等信息；本工具不将非标资产风险记录表述为债券违约记录。\n\n【边界】只覆盖债券违约、商票逾期和非标资产风险；司法执行、失信状态和行政处罚属于其他风险证据。",
@@ -4619,14 +4613,14 @@
                 "minLength": 2,
                 "maxLength": 50
               },
-              "timeFrom": {
+              "startDate": {
                 "type": "string",
                 "title": "查询起始时间",
                 "description": "查询起始时间，YYYY-MM-DD 格式（如 2026-01-18），默认为5年前",
                 "minLength": 10,
                 "maxLength": 10
               },
-              "timeTo": {
+              "endDate": {
                 "type": "string",
                 "title": "查询结束时间",
                 "description": "查询结束时间，YYYY-MM-DD 格式（如 2026-05-18）。默认取当前日期（今天）",
@@ -4656,7 +4650,7 @@
               },
               "role": {
                 "title": "当事人角色列表",
-                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_num(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
+                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_enum(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
                 "enum": [
                   "原告",
                   "被告",
@@ -4680,9 +4674,16 @@
               "companyKey"
             ]
           },
+          "extraParams": [
+            "startDate",
+            "endDate"
+          ],
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
-          }
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。"
         },
         "company_get_final_case": {
           "description": "【功能】查询企业的终本案件查询公开记录。\n\n【适用场景】核查企业的终本案件查询；用于尽职调查、合规核对或业务关系梳理。\n\n【返回】如有公开记录，返回终结本次执行程序案件的案号、执行法院、终本日期、执行标的金额和未履行金额；没有公开记录时明确提示无匹配记录。\n\n【边界】只核查终结本次执行程序记录；一般执行案件和失信名单反映的是不同阶段或不同法律状态。",
@@ -4871,14 +4872,14 @@
                 "minLength": 2,
                 "maxLength": 50
               },
-              "timeFrom": {
+              "startDate": {
                 "type": "string",
                 "title": "查询起始时间",
                 "description": "查询起始时间，YYYY-MM-DD 格式（如 2026-01-18），默认为5年前",
                 "minLength": 10,
                 "maxLength": 10
               },
-              "timeTo": {
+              "endDate": {
                 "type": "string",
                 "title": "查询结束时间",
                 "description": "查询结束时间，YYYY-MM-DD 格式（如 2026-05-18）。默认取当前日期（今天）",
@@ -4887,7 +4888,7 @@
               },
               "causeOfAction": {
                 "title": "案由列表",
-                "description": "可选的数组参数，用于按“案由”过滤结果，不传时返回全部，以下 enum 为常见案由。如需更完整的案由列表，请调用 company_get_biz_num(listType=2, categoryName=\"案由\") 获取完整案由列表后传入。",
+                "description": "可选的数组参数，用于按“案由”过滤结果，不传时返回全部，以下 enum 为常见案由。如需更完整的案由列表，请调用 company_get_biz_enum(listType=2, categoryName=\"案由\") 获取完整案由列表后传入。",
                 "enum": [
                   "合同、无因管理、不当得利纠纷",
                   "与公司、证券、保险、票据等有关的民事纠纷",
@@ -4908,7 +4909,7 @@
               },
               "role": {
                 "title": "当事人角色列表",
-                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_num(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
+                "description": "可选的数组参数，用于按当事人“角色”过滤结果，不传时返回全部，以下 enum 为常见当事人角色。如需更完整的角色列表，请调用 company_get_biz_enum(listType=2, categoryName=\"当事人角色\") 获取完整角色列表后传入。",
                 "enum": [
                   "原告",
                   "被告",
@@ -4932,9 +4933,16 @@
               "companyKey"
             ]
           },
+          "extraParams": [
+            "startDate",
+            "endDate"
+          ],
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
-          }
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。"
         },
         "company_get_judicial_sales": {
           "description": "【功能】查询企业的司法拍卖资产查询公开记录。\n\n【适用场景】核查企业的司法拍卖资产查询；用于尽职调查、合规核对或业务关系梳理。\n\n【返回】如有公开记录，返回司法拍卖标题、起拍价、评估价、拍卖时间和处置单位；没有公开记录时明确提示无匹配记录。\n\n【边界】只核查司法拍卖或司法处置资产；询价、评估等前置记录与最终拍卖处置结果应分别判断。",
@@ -5076,7 +5084,7 @@
               },
               "tagCode": {
                 "title": "舆情标签",
-                "description": "可选的数组参数，用于按“舆情标签”过滤结果，不传时返回全部，以下 enum 为常见舆情标签。如需更完整的标签列表，请调用 company_get_biz_num(listType=2, categoryName=\"舆情标签\") 获取完整标签列表后传入。",
+                "description": "可选的数组参数，用于按“舆情标签”过滤结果，不传时返回全部，以下 enum 为常见舆情标签。如需更完整的标签列表，请调用 company_get_biz_enum(listType=2, categoryName=\"舆情标签\") 获取完整标签列表后传入。",
                 "enum": [
                   "债务违约",
                   "行政处罚",
@@ -5107,14 +5115,14 @@
                 "type": "boolean",
                 "description": "是否查询舆情穿透信息"
               },
-              "timeFrom": {
+              "startDate": {
                 "title": "查询起始时间",
                 "description": "查询起始时间，YYYY-MM-DD 格式（如 2026-01-18），默认为5年前",
                 "type": "string",
                 "minLength": 10,
                 "maxLength": 10
               },
-              "timeTo": {
+              "endDate": {
                 "title": "查询结束时间",
                 "description": "查询结束时间，YYYY-MM-DD 格式（如 2026-05-18）。默认取当前日期（今天）",
                 "type": "string",
@@ -5126,9 +5134,16 @@
               "companyKey"
             ]
           },
+          "extraParams": [
+            "startDate",
+            "endDate"
+          ],
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
-          }
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。"
         },
         "company_get_owing_tax": {
           "description": "【功能】查询企业的企业欠税查询公开记录。\n\n【适用场景】核查企业的企业欠税查询；用于尽职调查、合规核对或业务关系梳理。\n\n【返回】如有公开记录，返回欠税税种、欠税余额、新增欠税金额、公告日期和主管税务机关；没有公开记录时明确提示无匹配记录。\n\n【边界】只核查欠税公告或欠缴税款信息；税收违法案件和税务非正常户分别反映违法处理和税务状态。",
@@ -5366,6 +5381,334 @@
           },
           "sample": {
             "listType": 1
+          }
+        }
+      }
+    },
+    "index": {
+      "full": "vserver_index_data",
+      "endpoint": "https://mcp.wind.com.cn/vserver_index_data/mcp/",
+      "title": "指数与板块：档案、点位序列与加权估值",
+      "scope": "指数与板块的实时快照、当日分钟点位、历史 K 线、成份加权基本面与估值、技术指标，以及指数档案与跟踪基金清单。",
+      "guidance": [
+        "**参数名和别的 server 不一样**：这里是小写 `windcode`（stock / fund 是 `windCode`）；K 线用 `begin_date` / `end_date`，分钟序列用 `begin` / `end`。三套写法互不通用，照 `sample` 抄，别凭记忆填。",
+        "分工：现在多少点用 `get_index_price_indicators`（时点截面，字段自选）；今天怎么走用 `get_index_quote`（当日分钟，约 240 条/天）；一段时间怎么走用 `get_index_kline`（聚合周期，`period` 只填数字：10=日 11=周 12=月）；估值与加权基本面用 `get_index_fundamentals`；均线、MACD、区间涨跌幅用 `get_index_technicals`；发布机构、基日基点、成份数量、跟踪基金用 `get_index_basicinfo`。",
+        "**盘中实时表现、涨跌分布、成分股排行不在这里**，走 `stock.stock_get_sector_realtime_analysis`（它按板块/主题/指数名直接给盘中全景）。本 server 管的是档案、序列、加权估值和技术指标。",
+        "⚠ **估值口径跟着问句走**：问「沪深300 的加权市盈率」返回加权口径（实测 38.59），问「沪深300 的市盈率」返回 PE_TTM（实测 13.57）。两个都是对的，但不是一个东西——回答时必须说明是哪一个口径，不要把两次结果放在一起比。",
+        "⚠ `get_index_price_indicators.indexes` 的可选值全部写在该字段的说明里，跑 `describe index get_index_price_indicators indexes` 逐字复制。写错的字段**不会报错**：后端照常返回其余字段，只在返回体里塞一句 `message: 无效的行情指标:xxx`（CLI 已把它提到 `cli_meta.backend_message`）——看到它就说明你要的那个字段没取到。",
+        "三个 `question` 工具（`basicinfo` / `fundamentals` / `technicals`）是自然语言入参，问句要写全「指数 + 指标 + 日期」三要素，如「沪深300指数2024年的加权PE和股息率」。"
+      ],
+      "keywords": [
+        "K线",
+        "上证指数",
+        "中证500",
+        "分钟线",
+        "加权PE",
+        "基日",
+        "基点",
+        "成份股",
+        "沪深300",
+        "点位",
+        "板块",
+        "恒生指数",
+        "指数",
+        "指数估值",
+        "指数档案",
+        "跟踪基金",
+        "行业指数",
+        "主题指数"
+      ],
+      "confusable": "`get_index_price_indicators`（当前时点截面）vs `get_index_quote`（当日分钟序列）vs `get_index_kline`（历史聚合 K 线）——「现在多少点」用第一个，「今天走势」用第二个，「近一个月走势」用第三个。",
+      "toolCount": 6,
+      "paramCount": 14,
+      "tools": {
+        "get_index_technicals": {
+          "description": "返回指定指数基于历史行情序列计算的派生指标，包括相对窗口统计（如区间涨跌幅、均线、波动）与量价资金流向指标（如 MFI）。不含原始点位序列与实时快照。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "获取指数技术指标及衍生指标，涵盖多周期涨跌幅（N日、周、月、年、区间）、趋向指标、反趋向指标、能量指标、量价指标、压力支撑指标、成交量指标、超买超卖指标、摆动指标、强弱指标、以及波动指标",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出由历史行情算出的派生指标（均线、区间涨跌幅、MFI 等），不含原始点位序列与实时快照",
+          "sample": {
+            "question": "沪深300指数的MACD、RSI和20日涨跌幅"
+          }
+        },
+        "get_index_quote": {
+          "description": "返回指定指数的分钟级点位序列，每条记录代表一分钟。时间范围由 begin/end 指定（含首尾），未指定默认最新交易日；单日约 240 条，跨日体积按天数放大，长区间建议改用 K 线工具的聚合周期。仅交易日有数据，非交易日返回空结果。当前时刻截面状态请用行情快照工具。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "windcode": {
+                "type": "string",
+                "title": "Wind代码",
+                "description": "指数名称或者指数代码，如沪深300或000300.SH"
+              },
+              "begin": {
+                "type": "string",
+                "title": "查询开始日期",
+                "description": "开始日期，格式 YYYY-MM-DD，如 2026-03-25；未指定默认最新交易日。不可只传 end 不传 begin。 "
+              },
+              "end": {
+                "type": "string",
+                "title": "查询结束日期",
+                "description": "结束日期，格式 YYYY-MM-DD，如 2026-03-25；未指定默认最新交易日（即只传 begin 时返回 begin 至最新交易日的区间）。 "
+              },
+              "count": {
+                "title": "数据数量",
+                "description": "在开始/结束日期区间内取数的条数(整数):正数从头往后取N条，负数从结束日期往前取N条，0取全部；不会超出日期区间，默认0",
+                "default": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "windcode"
+            ]
+          },
+          "boundary": "只出当日或指定区间的分钟级点位序列，单日约 240 条；当前时点截面走 price_indicators",
+          "sample": {
+            "windcode": "000300.SH",
+            "count": 3
+          }
+        },
+        "get_index_kline": {
+          "description": "返回指定指数在给定时间范围内的聚合点位序列（K 线），聚合周期由 period 指定（分钟级至年，默认日 K）。每条记录代表一个周期，包含开盘价、收盘价、最高价、最低价等。当日盘中分钟走势建议用分钟级行情工具（缺省即最新交易日）；相对窗口统计与技术指标不在本工具范围。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "windcode": {
+                "title": "Wind代码",
+                "description": "指数名称或者指数代码，如沪深300或000300.SH",
+                "type": "string"
+              },
+              "begin_date": {
+                "title": "开始日期",
+                "description": "开始日期：格式YYYY-MM-DD，如2026-03-25. ",
+                "type": "string"
+              },
+              "end_date": {
+                "title": "结束日期",
+                "description": "结束日期，格式为YYYY-MM-DD,如2026-03-26. ",
+                "type": "string"
+              },
+              "period": {
+                "title": "K线周期",
+                "description": "K线周期：默认10(日K)。可选值：1=1分钟，3=5分钟，4=10分钟，5=15分钟，6=30分钟，7=60分钟，8=120分钟，9=240分钟，10=日K，11=周K，12=月K，13=年K，14=季K，15=半年K。常用：日K=10，周K=11，月K=12",
+                "default": "10",
+                "type": "string"
+              },
+              "count": {
+                "title": "数据数量",
+                "description": "在开始/结束日期区间内取数的条数(整数):正数从头往后取N条，负数从结束日期往前取N条，0取全部；不会超出日期区间，默认0",
+                "default": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "windcode",
+              "begin_date",
+              "end_date"
+            ]
+          },
+          "boundary": "只出按周期聚合的历史点位序列；技术指标与区间统计不在本工具范围",
+          "sample": {
+            "windcode": "000300.SH",
+            "begin_date": "2026-09-01",
+            "end_date": "2026-09-04"
+          }
+        },
+        "get_index_fundamentals": {
+          "description": "返回指定指数的基本面与估值指标，按成份股加权聚合口径（如加权 PE、PB、股息率）。成份股个股的财务明细需以个股代码查询相应实体的数据；不含非预定义口径的临时聚合计算。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "自然语言查询要求：指数实体（名称或指数代码）+ 加权基本面/估值指标 + 时间（可选：加权财务指标填报告期如2024-12-31，缺省最新披露期；估值指标及其分位数填交易日，缺省最新交易日）。示例：查询沪深300的PE、PB和成份股加权营收。",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出按成份股加权聚合的基本面与估值；成份个股的财务明细要用个股代码另查",
+          "sample": {
+            "question": "沪深300指数最新的加权市盈率PE、市净率PB和股息率"
+          },
+          "knownIssue": "口径由问句决定：问「加权市盈率」得加权口径（实测 38.59），问「市盈率」得 PE_TTM（实测 13.57）。两次问法拿到的数不可混用，回答时要写明口径。"
+        },
+        "get_index_price_indicators": {
+          "description": "获取一个或多个指数当前时刻的行情指标快照值（时点数据、非时间序列）。指标经 indexes 指定，取值须逐字取自其可选值清单（如 最新成交价、今日开盘价、涨跌幅、成交额等）；不填 indexes 时默认返回：最新交易日、交易时间、最新成交价、前收盘价、今日开盘价、今日最高价、今日最低价、成交量。仅返回时点截面，不含过程序列。用户询问指数的当前/最新点位或某个行情指标值时使用。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "windcode": {
+                "type": "string",
+                "title": "Wind代码",
+                "description": "一个或多个指数名称或指数代码，多个代码用英文逗号分隔，如000300.SH,000905.SH。"
+              },
+              "indexes": {
+                "type": "string",
+                "title": "行情指标",
+                "description": "行情指标字段，多个字段用逗号分隔。可选值：最新交易日,交易时间,中文简称,最新成交价,前收盘价,今日开盘价,今日最高价,今日最低价,最新均价,涨跌,涨跌幅,成交量,成交额,交易状态,近1分钟成交额,近3分钟成交额,近5分钟成交额,换手率,量比,振幅,基于Wind算法的量比,上市日期,现量,现额,当日主力净流入额,当日主力净流入占比,近5日主力净流入额,近5日主力净流入占比,近5日主力净流入天数,近10日主力净流入额,近10日主力净流入占比,近10日主力净流入天数,近20日主力净流入额,近20日主力净流入占比,近20日主力净流入天数,近60日主力净流入额,近60日主力净流入占比,近60日主力净流入天数,连续上涨天数,连红天数,指数平滑异同移动平均,DIF快线,随机指标K值,随机指标D值,随机指标J值,6周期相对强弱指标,12周期相对强弱指标,抛物线转向指标,布林中轨,布林上轨,布林下轨,5周期移动平均,10周期移动平均,20周期移动平均,60周期移动平均,120周期移动平均,250日均线,5日乖离率,36日乖离,14周期顺势指标,26周期能量指标,12周期心理线指标,近1分钟涨跌幅,近3分钟涨跌幅,MACD多头金叉信号,MACD空头死叉信号,5分钟涨跌幅,5日涨跌幅,10日涨跌幅,20日涨跌幅,60日涨跌幅,120日涨跌幅,250日涨跌幅,年初至今涨跌幅,上市以来涨跌幅,近3年涨跌幅,近5年涨跌幅,近10年涨跌幅,近20年涨跌幅,市净率,市净率(LF),市盈率(TTM),市盈率(预测),总市值1,流通市值,52周最高,52周最低,上涨家数,下跌家数,平盘家数",
+                "default": "最新交易日,交易时间,最新成交价,前收盘价,今日开盘价,今日最高价,今日最低价,成交量"
+              }
+            },
+            "required": [
+              "windcode"
+            ]
+          },
+          "boundary": "只出当前时点的行情截面，不含过程序列；字段由 indexes 指定且必须逐字取自其说明里的可选值",
+          "sample": {
+            "windcode": "000300.SH"
+          },
+          "knownIssue": "`indexes` 里写了不存在的字段**不会报错**：后端返回其余字段并在返回体里加一句 `message: 无效的行情指标:xxx`，CLI 会把它提到 `cli_meta.backend_message`。看到 backend_message 就说明有字段没取到，要么改名重取，要么如实说明。"
+        },
+        "get_index_basicinfo": {
+          "description": "获取指数基本档案信息，涵盖指数名称、发布机构、基日、基点、计算方法、成份股、成分数量、以及指数分类。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "自然语言查询要求：指数实体（名称或指数代码）+ 需要的档案项（全称、发布机构、基日与基点、指数风格、成份数量、全收益/净收益指数代码、被跟踪的基金列表与数量等）。静态或准静态档案，通常无需时间限定。示例：查询沪深300的发布机构、基日基点与成份数量。",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出指数档案（发布机构、基日基点、计算方法、成份数量、分类）与跟踪基金清单，不含行情与成份权重明细",
+          "sample": {
+            "question": "沪深300指数的发布机构、基日、基点和成份股数量"
+          }
+        }
+      }
+    },
+    "bond": {
+      "full": "vserver_bond_data",
+      "endpoint": "https://mcp.wind.com.cn/vserver_bond_data/mcp/",
+      "title": "债券：发行要素、估值与发债主体",
+      "scope": "单只债券的发行要素与评级、区间行情与中债估值，以及发债主体的档案、评级和财务报表。",
+      "guidance": [
+        "四个工具**全部是自然语言 `question` 入参**，问句必须带**债券代码或简称**（`019742.SH` / 24特国01）再加要问的指标。只写「国债」「城投债」这类泛称会被判为未识别——本 server 没有筛选工具。",
+        "分工看问的是**债券**还是**发行人**：债券自身的发行规模、票面利率、期限、债项评级 → `get_bond_basicinfo`；债券的区间价格与中债估值（收益率、久期、凸性）→ `get_bond_market_data`；**发债主体**的名称、注册地、主体评级 → `get_bond_issuer_info`；**发债主体**的营收、利润等报表数据 → `get_bond_financial_data`。",
+        "本 server 没有筛选、没有实时快照、没有 K 线：按条件找债券用 `finance.general_query_data`，最新价用 `finance.quote_get_realtime_indicators`，历史 K 线用 `finance.quote_get_historical_data_series`（债券代码实测可用，如 `019742.SH`）。",
+        "⚠ **估值字段经常整列为空**：实测 `019742.SH` 近一个月的中债估值收益率、修正久期、凸性全部返回 null，接口不报错。空值就是「该券没有这项估值」，如实说明，不要换工具重试，也不要拿相邻字段替代。",
+        "发债主体的司法、失信、行政处罚、股权穿透走 `company`；主体本身是上市公司时，经营与财务用 `stock` 的专项工具更全。"
+      ],
+      "keywords": [
+        "中债估值",
+        "中票",
+        "久期",
+        "债券",
+        "债项评级",
+        "公司债",
+        "凸性",
+        "到期收益率",
+        "可转债",
+        "国债",
+        "城投债",
+        "企业债",
+        "信用评级",
+        "主体评级",
+        "发债主体",
+        "短融",
+        "票面利率"
+      ],
+      "confusable": "`get_bond_basicinfo`（这只债券本身：发行要素、债项评级）vs `get_bond_issuer_info`（发行这只债券的主体：工商档案、主体评级）——「这只债的评级」和「这家发行人的评级」是两个数。",
+      "toolCount": 4,
+      "paramCount": 4,
+      "tools": {
+        "get_bond_basicinfo": {
+          "description": "返回指定债券的静态档案数据，包括发行要素（如发行规模、票面利率、期限、起息与到期日期）、信用评级、债券类型等。不含行情与估值数据、发债主体信息。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "自然语言查询要求：债券实体（债券简称或债券代码）+ 需要的档案项（债券类型、发行规模、发行价格、票面利率、期限、起息与到期日期、兑付安排、债项信用评级、跨市场代码等）。静态或准静态档案，通常无需时间限定。示例：查询国债2601的发行规模、票面利率与到期日期。",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出债券静态档案（发行规模、票面利率、期限、起息与到期日、评级、券种），不含行情估值与主体信息",
+          "sample": {
+            "question": "019742.SH 的发行规模、票面利率、起息日和到期日"
+          }
+        },
+        "get_bond_issuer_info": {
+          "description": "返回指定债券发债主体的档案信息，包括主体基本信息、主体信用评级等。债券属性与主体财务数据请使用相应工具。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "自然语言查询要求：债券实体（债券简称或债券代码）+ 主体档案项（主体名称、注册地址、行业分类、股权结构、企业背景、主体信用评级等）。示例：查询22万科MTN001发债主体的注册地址、行业分类与最新主体评级。",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出发债主体的档案与主体评级；债券属性和主体财务各有专用工具",
+          "sample": {
+            "question": "019742.SH 发债主体的名称、注册地和主体信用评级"
+          }
+        },
+        "get_bond_market_data": {
+          "description": "返回指定债券在指定时间范围内的区间行情与估值数据，频率支持日、周、月、年及自定义区间，包括价格、收益率、估值指标等。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "自然语言查询要求：债券实体（债券简称或债券代码）+ 行情/估值指标（收盘价、成交量、到期收益率、估价收益率、久期、凸性、利差等）+ 时间范围与频率（可选，日/周/月/年或自定义区间，缺省最新交易日、日频）。示例：查询国债2601最新一日的到期收益率、久期和凸性。",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出债券在指定区间的行情与估值序列（价格、收益率、久期、凸性），不含静态发行要素",
+          "sample": {
+            "question": "019742.SH 最近5个交易日的收盘价和到期收益率"
+          },
+          "knownIssue": "中债估值类字段常整列为空（实测 `019742.SH` 近一月的估值收益率/修正久期/凸性全为 null，且不报错）。空值按「该券无此估值」如实报告，别重试或改用别的工具凑数。"
+        },
+        "get_bond_financial_data": {
+          "description": "返回指定债券发债主体的财务数据，时间维度为报告期。主体档案信息与债券本身属性请使用相应工具。",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "title": "查询语句",
+                "description": "自然语言查询要求：债券实体（债券简称或债券代码，返回其发行人的财务数据）+ 财务指标（营收、利润、资产、负债及财务比率等）+ 报告期（可选，填如2024-12-31，缺省最新披露期）。示例：查询22万科MTN001发债主体2024-12-31的营业收入和净利润。",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question"
+            ]
+          },
+          "boundary": "只出发债主体按报告期的财务数据；主体档案与债券属性要用相应工具",
+          "sample": {
+            "question": "122211.SH 发债主体2025年的营业收入和净利润"
           }
         }
       }

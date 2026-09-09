@@ -26,7 +26,7 @@
             "windCodes": "600519.SH,000858.SZ",
             "indexes": "中文简称,最新成交价,涨跌幅"
           },
-          "knownIssue": "2026-09-05 复测服务端不可用（3 次重试均返回「服务暂时不可用，请稍后重试」）；2026-09-04 曾正常"
+          "knownIssue": "2026-09-05 起服务端持续不可用，2026-09-07 复测仍返回「服务暂时不可用，请稍后重试」（含全量冒烟在内共 3 次）。别重试，改用 `general_get_indicator_data`（按指标代码取值）或 `quote_get_historical_data_series`（最近一根 K 线）。"
         },
         "quote_get_historical_data_series": {
           "sample": {
@@ -458,6 +458,142 @@
       ],
       "confusable": "`fund_get_equity_holdings`（全部股票持仓，几百只）vs `fund_get_top_equity_holdings`（披露的重仓股，十只左右）——问「持仓」多半要后者，问「全部持仓明细」才用前者。"
     },
+    "index": {
+      "full": "vserver_index_data",
+      "title": "指数与板块：档案、点位序列与加权估值",
+      "scope": "指数与板块的实时快照、当日分钟点位、历史 K 线、成份加权基本面与估值、技术指标，以及指数档案与跟踪基金清单。",
+      "guidance": [
+        "**参数名和别的 server 不一样**：这里是小写 `windcode`（stock / fund 是 `windCode`）；K 线用 `begin_date` / `end_date`，分钟序列用 `begin` / `end`。三套写法互不通用，照 `sample` 抄，别凭记忆填。",
+        "分工：现在多少点用 `get_index_price_indicators`（时点截面，字段自选）；今天怎么走用 `get_index_quote`（当日分钟，约 240 条/天）；一段时间怎么走用 `get_index_kline`（聚合周期，`period` 只填数字：10=日 11=周 12=月）；估值与加权基本面用 `get_index_fundamentals`；均线、MACD、区间涨跌幅用 `get_index_technicals`；发布机构、基日基点、成份数量、跟踪基金用 `get_index_basicinfo`。",
+        "**盘中实时表现、涨跌分布、成分股排行不在这里**，走 `stock.stock_get_sector_realtime_analysis`（它按板块/主题/指数名直接给盘中全景）。本 server 管的是档案、序列、加权估值和技术指标。",
+        "⚠ **估值口径跟着问句走**：问「沪深300 的加权市盈率」返回加权口径（实测 38.59），问「沪深300 的市盈率」返回 PE_TTM（实测 13.57）。两个都是对的，但不是一个东西——回答时必须说明是哪一个口径，不要把两次结果放在一起比。",
+        "⚠ `get_index_price_indicators.indexes` 的可选值全部写在该字段的说明里，跑 `describe index get_index_price_indicators indexes` 逐字复制。写错的字段**不会报错**：后端照常返回其余字段，只在返回体里塞一句 `message: 无效的行情指标:xxx`（CLI 已把它提到 `cli_meta.backend_message`）——看到它就说明你要的那个字段没取到。",
+        "三个 `question` 工具（`basicinfo` / `fundamentals` / `technicals`）是自然语言入参，问句要写全「指数 + 指标 + 日期」三要素，如「沪深300指数2024年的加权PE和股息率」。"
+      ],
+      "keywords": [
+        "K线",
+        "上证指数",
+        "中证500",
+        "分钟线",
+        "加权PE",
+        "基日",
+        "基点",
+        "成份股",
+        "沪深300",
+        "点位",
+        "板块",
+        "恒生指数",
+        "指数",
+        "指数估值",
+        "指数档案",
+        "跟踪基金",
+        "行业指数",
+        "主题指数"
+      ],
+      "confusable": "`get_index_price_indicators`（当前时点截面）vs `get_index_quote`（当日分钟序列）vs `get_index_kline`（历史聚合 K 线）——「现在多少点」用第一个，「今天走势」用第二个，「近一个月走势」用第三个。",
+      "tools": {
+        "get_index_technicals": {
+          "boundary": "只出由历史行情算出的派生指标（均线、区间涨跌幅、MFI 等），不含原始点位序列与实时快照",
+          "sample": {
+            "question": "沪深300指数的MACD、RSI和20日涨跌幅"
+          }
+        },
+        "get_index_quote": {
+          "boundary": "只出当日或指定区间的分钟级点位序列，单日约 240 条；当前时点截面走 price_indicators",
+          "sample": {
+            "windcode": "000300.SH",
+            "count": 3
+          }
+        },
+        "get_index_kline": {
+          "boundary": "只出按周期聚合的历史点位序列；技术指标与区间统计不在本工具范围",
+          "sample": {
+            "windcode": "000300.SH",
+            "begin_date": "2026-09-01",
+            "end_date": "2026-09-04"
+          }
+        },
+        "get_index_fundamentals": {
+          "boundary": "只出按成份股加权聚合的基本面与估值；成份个股的财务明细要用个股代码另查",
+          "sample": {
+            "question": "沪深300指数最新的加权市盈率PE、市净率PB和股息率"
+          },
+          "knownIssue": "口径由问句决定：问「加权市盈率」得加权口径（实测 38.59），问「市盈率」得 PE_TTM（实测 13.57）。两次问法拿到的数不可混用，回答时要写明口径。"
+        },
+        "get_index_price_indicators": {
+          "boundary": "只出当前时点的行情截面，不含过程序列；字段由 indexes 指定且必须逐字取自其说明里的可选值",
+          "sample": {
+            "windcode": "000300.SH"
+          },
+          "knownIssue": "`indexes` 里写了不存在的字段**不会报错**：后端返回其余字段并在返回体里加一句 `message: 无效的行情指标:xxx`，CLI 会把它提到 `cli_meta.backend_message`。看到 backend_message 就说明有字段没取到，要么改名重取，要么如实说明。"
+        },
+        "get_index_basicinfo": {
+          "boundary": "只出指数档案（发布机构、基日基点、计算方法、成份数量、分类）与跟踪基金清单，不含行情与成份权重明细",
+          "sample": {
+            "question": "沪深300指数的发布机构、基日、基点和成份股数量"
+          }
+        }
+      }
+    },
+    "bond": {
+      "full": "vserver_bond_data",
+      "title": "债券：发行要素、估值与发债主体",
+      "scope": "单只债券的发行要素与评级、区间行情与中债估值，以及发债主体的档案、评级和财务报表。",
+      "guidance": [
+        "四个工具**全部是自然语言 `question` 入参**，问句必须带**债券代码或简称**（`019742.SH` / 24特国01）再加要问的指标。只写「国债」「城投债」这类泛称会被判为未识别——本 server 没有筛选工具。",
+        "分工看问的是**债券**还是**发行人**：债券自身的发行规模、票面利率、期限、债项评级 → `get_bond_basicinfo`；债券的区间价格与中债估值（收益率、久期、凸性）→ `get_bond_market_data`；**发债主体**的名称、注册地、主体评级 → `get_bond_issuer_info`；**发债主体**的营收、利润等报表数据 → `get_bond_financial_data`。",
+        "本 server 没有筛选、没有实时快照、没有 K 线：按条件找债券用 `finance.general_query_data`，最新价用 `finance.quote_get_realtime_indicators`，历史 K 线用 `finance.quote_get_historical_data_series`（债券代码实测可用，如 `019742.SH`）。",
+        "⚠ **估值字段经常整列为空**：实测 `019742.SH` 近一个月的中债估值收益率、修正久期、凸性全部返回 null，接口不报错。空值就是「该券没有这项估值」，如实说明，不要换工具重试，也不要拿相邻字段替代。",
+        "发债主体的司法、失信、行政处罚、股权穿透走 `company`；主体本身是上市公司时，经营与财务用 `stock` 的专项工具更全。"
+      ],
+      "keywords": [
+        "中债估值",
+        "中票",
+        "久期",
+        "债券",
+        "债项评级",
+        "公司债",
+        "凸性",
+        "到期收益率",
+        "可转债",
+        "国债",
+        "城投债",
+        "企业债",
+        "信用评级",
+        "主体评级",
+        "发债主体",
+        "短融",
+        "票面利率"
+      ],
+      "confusable": "`get_bond_basicinfo`（这只债券本身：发行要素、债项评级）vs `get_bond_issuer_info`（发行这只债券的主体：工商档案、主体评级）——「这只债的评级」和「这家发行人的评级」是两个数。",
+      "tools": {
+        "get_bond_basicinfo": {
+          "boundary": "只出债券静态档案（发行规模、票面利率、期限、起息与到期日、评级、券种），不含行情估值与主体信息",
+          "sample": {
+            "question": "019742.SH 的发行规模、票面利率、起息日和到期日"
+          }
+        },
+        "get_bond_issuer_info": {
+          "boundary": "只出发债主体的档案与主体评级；债券属性和主体财务各有专用工具",
+          "sample": {
+            "question": "019742.SH 发债主体的名称、注册地和主体信用评级"
+          }
+        },
+        "get_bond_market_data": {
+          "boundary": "只出债券在指定区间的行情与估值序列（价格、收益率、久期、凸性），不含静态发行要素",
+          "sample": {
+            "question": "019742.SH 最近5个交易日的收盘价和到期收益率"
+          },
+          "knownIssue": "中债估值类字段常整列为空（实测 `019742.SH` 近一月的估值收益率/修正久期/凸性全为 null，且不报错）。空值按「该券无此估值」如实报告，别重试或改用别的工具凑数。"
+        },
+        "get_bond_financial_data": {
+          "boundary": "只出发债主体按报告期的财务数据；主体档案与债券属性要用相应工具",
+          "sample": {
+            "question": "122211.SH 发债主体2025年的营业收入和净利润"
+          }
+        }
+      }
+    },
     "edb": {
       "full": "vserver_edb_data",
       "title": "宏观与行业经济指标（EDB）",
@@ -542,11 +678,32 @@
             ],
             "date": "2026-09-03"
           },
-          "knownIssue": "只管仓单与交割的汇总口径。用户问「某品种库存多少」时应走 `futures_get_supply_demand` 的 `type=4`（库存/仓单/港口库存），不要用本工具。"
+          "knownIssue": "只管仓单与交割的汇总口径。用户问「某品种库存多少」时应走 `futures_get_supply_demand` 的 `type=4`（库存/仓单/港口库存），不要用本工具。",
+          "extraParams": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "delivery",
+                "receipt"
+              ],
+              "title": "数据类型",
+              "description": "数据类型，需传入。决定返回哪些字段。可填英文系统值（delivery/receipt）或中文键（交割/仓单），两种写法等价。\n\n映射关系：\n• delivery = 交割\n• receipt = 仓单\n\n【填写样例】\n• 查交割数据 → \"delivery\" 或 \"交割\"\n• 查仓单数据 → \"receipt\" 或 \"仓单\"\n\n负向约束：\n• 同时提到「交割和仓单」「两种都要」 → 主动追问,禁止默认任一\n• 仅说「查一下」无 type 上下文 → 主动追问\n• 一次调用只能一个 type\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，且是区分交割/仓单两套数据的唯一手段；不传默认返回仓单。"
+            }
+          }
         },
         "futures_get_contract_spec": {
           "sample": {
             "windCode": "CU.SHF"
+          },
+          "extraParams": {
+            "fields": {
+              "type": "array",
+              "title": "字段子集",
+              "items": {
+                "type": "string"
+              },
+              "description": "字段子集，只返回点名的字段，用来把返回体从 1,393 字压到几百字。\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，但**只收英文字段名**（contractName / tradingDeposit / transactionFee / …）——旧版说明里的中文映射键已失效，传中文会返回「未知的字段名：…。合法字段：…」的纯文本。不确定字段名就先不传，从全量返回里挑。"
+            }
           }
         },
         "futures_get_basis": {
@@ -571,6 +728,24 @@
             "windCode": "CU.SHF",
             "date": "2026-09-03",
             "limit": 5
+          },
+          "extraParams": {
+            "type": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "title": "排名类型",
+              "description": "排名类型，必填（1-9 整数）。映射关系：多头持仓/空头持仓/净多/净空/多头增仓/多头减仓/空头增仓/空头减仓/成交量 → 1/2/3/4/5/6/7/8/9。中文键与数字值等价。用户问「多头榜/做多排名」→ type=1；「净空榜」→ type=4；「增仓榜/加仓」→ 对应 5 或 7；「成交量榜」→ type=9。\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，也不再必填：不传会把九类排名一次全返（实测 4,672 字），传 type 只要 510 字。"
+            }
           }
         },
         "futures_get_supply_demand": {
@@ -580,7 +755,25 @@
             "startDate": "2026-01-01",
             "endDate": "2026-09-03"
           },
-          "knownIssue": "`includeHistory` **默认 true**：不显式关掉会返回整段历史序列（实测沪铜库存 1.6 万字），只要最新值时传 `includeHistory:false`（降到 2 千字）。另外一次返回里单位可能混排（「吨」与「万吨」并存，量级差 1 万倍），逐行读各自的 `unit`，不要跨行相加。"
+          "knownIssue": "`includeHistory` **默认 true**：不显式关掉会返回整段历史序列（实测沪铜库存 1.6 万字），只要最新值时传 `includeHistory:false`（降到 2 千字）。另外一次返回里单位可能混排（「吨」与「万吨」并存，量级差 1 万倍），逐行读各自的 `unit`，不要跨行相加。",
+          "extraParams": {
+            "type": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3,
+                4
+              ],
+              "title": "基本面类型",
+              "description": "基本面类型，必填。可选值：1-供需平衡（供需/平衡表），2-供应（供给/产量/进口），3-需求（消费/出口），4-库存（社会库存/仓单/港口库存）。用户问「库存/仓单」→4；问「产量/供应/供给/进口」→2；问「需求/消费/出口」→3；问「供需平衡/平衡表」→1。\n\n⚠ 线上 schema 已不再声明本参数（2026-09-07 复核），实测后端仍然认，也不再必填：不传按「全部」返回（实测 7,612 字），type=4 只要 1,597 字。"
+            }
+          }
+        },
+        "futures_get_research_opinion": {
+          "sample": {
+            "windCode": "CU.SHF"
+          }
         }
       },
       "keywords": [
@@ -781,7 +974,7 @@
       "guidance": [
         "**`companyKey` 不是证券代码**，是企业名称或统一社会信用代码（如「恒大地产集团有限公司」）。拿到用户给的股票代码或简称时，**先 `company_search_entity` 换成标准企业名**，再调用其余 53 个工具。",
         "本 server 覆盖**非上市主体**，这是它与 stock server 的分界：上市公司的财务、估值、行情走 stock；企业的工商、司法、失信、处罚记录走这里。",
-        "**日期字段分两派**：`company_get_court_announcements`、`company_get_court_sessions`、`company_get_filing_info`、`company_get_judgments`、`company_get_news_sentiment` 用 `timeFrom`/`timeTo`；其余带日期的工具一律 `startDate`/`endDate`。传错的一方会被**静默忽略**，静默返回默认区间（近 5 年）的全量数据而不报错——本 CLI 已在本地拦截未知字段。",
+        "**日期字段一律传 `startDate`/`endDate`**。`company_get_court_announcements`、`court_sessions`、`filing_info`、`judgments`、`news_sentiment` 五个工具的线上 schema 在 `timeFrom`/`timeTo` 与 `startDate`/`endDate` 之间来回滚过五轮，但后端**只认 `startDate`/`endDate`**：传 `timeFrom` 不报错、直接被吞，返回默认区间（近 5 年）的全量数据（2026-09-07 实测恒大 judgments：传 `timeFrom` 得 2,278 条，传 `startDate` 得 6 条）。**判据看返回标题有没有回显区间**——`# 企业裁判文书信息的查询结果（恒大地产集团有限公司；2026-01-01~2026-03-31）` 带括号才算生效，没括号就是被吞了。",
         "本 server 的 schema 在历史上反复变动（日期字段名改过 4 轮）。命中「参数被忽略」或「工具不存在」时先跑 `node scripts/cli.mjs refresh company` 对齐，再重试。",
         "54 个工具中 45 个只需 `companyKey`，选工具时按「要查什么记录」直接对照目录，不要用 `company_search_entity` 之外的工具做实体检索。",
         "`companyKey` 接受**企业全称或统一社会信用代码**，是自然语言不是不可构造的 id。用户已给出唯一全称时可以直接传；只有拿到简称、品牌、曾用名，或可能匹配多个主体时，才先 `company_search_entity` 做主体匹配。"
@@ -919,12 +1112,42 @@
         },
         "company_get_court_announcements": {
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。",
+          "extraParams": {
+            "startDate": {
+              "type": "string",
+              "title": "开始日期",
+              "description": "开始日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeFrom`，但后端只认 `startDate`——本地按此契约固定放行。"
+            },
+            "endDate": {
+              "type": "string",
+              "title": "结束日期",
+              "description": "结束日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeTo`，但后端只认 `endDate`——本地按此契约固定放行。"
+            }
           }
         },
         "company_get_court_sessions": {
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。",
+          "extraParams": {
+            "startDate": {
+              "type": "string",
+              "title": "开始日期",
+              "description": "开始日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeFrom`，但后端只认 `startDate`——本地按此契约固定放行。"
+            },
+            "endDate": {
+              "type": "string",
+              "title": "结束日期",
+              "description": "结束日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeTo`，但后端只认 `endDate`——本地按此契约固定放行。"
+            }
           }
         },
         "company_get_default_info": {
@@ -964,7 +1187,22 @@
         },
         "company_get_filing_info": {
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。",
+          "extraParams": {
+            "startDate": {
+              "type": "string",
+              "title": "开始日期",
+              "description": "开始日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeFrom`，但后端只认 `startDate`——本地按此契约固定放行。"
+            },
+            "endDate": {
+              "type": "string",
+              "title": "结束日期",
+              "description": "结束日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeTo`，但后端只认 `endDate`——本地按此契约固定放行。"
+            }
           }
         },
         "company_get_final_case": {
@@ -994,7 +1232,22 @@
         },
         "company_get_judgments": {
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。",
+          "extraParams": {
+            "startDate": {
+              "type": "string",
+              "title": "开始日期",
+              "description": "开始日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeFrom`，但后端只认 `startDate`——本地按此契约固定放行。"
+            },
+            "endDate": {
+              "type": "string",
+              "title": "结束日期",
+              "description": "结束日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeTo`，但后端只认 `endDate`——本地按此契约固定放行。"
+            }
           }
         },
         "company_get_judicial_sales": {
@@ -1019,7 +1272,22 @@
         },
         "company_get_news_sentiment": {
           "sample": {
-            "companyKey": "恒大地产集团有限公司"
+            "companyKey": "恒大地产集团有限公司",
+            "startDate": "2026-01-01",
+            "endDate": "2026-03-31"
+          },
+          "knownIssue": "日期一律传 `startDate`/`endDate`：schema 会回滚成 `timeFrom`/`timeTo`，后端不认且静默返回近 5 年全量。判据是返回标题回显了区间才算生效，详见本页「调用要点」。",
+          "extraParams": {
+            "startDate": {
+              "type": "string",
+              "title": "开始日期",
+              "description": "开始日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeFrom`，但后端只认 `startDate`——本地按此契约固定放行。"
+            },
+            "endDate": {
+              "type": "string",
+              "title": "结束日期",
+              "description": "结束日期，格式 YYYY-MM-DD。⚠ 线上 schema 有时会把本字段回滚成 `timeTo`，但后端只认 `endDate`——本地按此契约固定放行。"
+            }
           }
         },
         "company_get_owing_tax": {

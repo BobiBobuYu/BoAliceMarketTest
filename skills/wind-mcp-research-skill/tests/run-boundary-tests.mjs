@@ -336,6 +336,66 @@ await check('参数 JSON 带 BOM 或前后空白仍可解析', async () => {
 });
 
 
+// ---------- 6.8 新入列的 index / bond，以及返回体裁剪 ----------
+await check('index / bond 用小写 windcode，驼峰写法被当未知字段拦下', async () => {
+  const r = await runCli(['call', 'index', 'get_index_price_indicators', '{"windCode":"000300.SH"}'], simpleHandler({}));
+  eq(r.json.code, 'PARAM_VALIDATION_ERROR');
+  assert(r.json.message.includes('windcode'), `报错要点出正确的小写字段名，实际 ${r.json.message}`);
+  eq(r.calls.length, 0, '本地拦截不应发请求');
+});
+
+await check('bond 四个工具的 question 必填，缺了本地就拦', async () => {
+  for (const tool of Object.keys(REG.servers.bond.tools)) {
+    const r = await runCli(['call', 'bond', tool, '{}'], simpleHandler({}));
+    eq(r.json.code, 'PARAM_VALIDATION_ERROR', `${tool} 应拦下空入参`);
+  }
+});
+
+await check('线上 schema 已不声明的 type 仍按 extraParams 放行并送达后端', async () => {
+  const r = await runCli(['call', 'futures', 'futures_get_supply_demand', '{"windCode":"CU.SHF","type":4}'], simpleHandler({ toolText: '{"data":[]}' }));
+  assert(r.json.cli_meta, `extraParams 应放行，实际 ${r.text.slice(0, 160)}`);
+  const call = r.calls.find((c) => c.body.method === 'tools/call');
+  eq(call.body.params.arguments.type, 4, 'type 要原样送达后端');
+});
+
+await check('extraParams 之外的未知字段照样拦', async () => {
+  const r = await runCli(['call', 'futures', 'futures_get_supply_demand', '{"windCode":"CU.SHF","zzz":1}'], simpleHandler({}));
+  eq(r.json.code, 'PARAM_VALIDATION_ERROR');
+});
+
+await check('成功信封是紧凑单行，不带缩进', async () => {
+  const r = await runCli(['call', 'edb', 'economic_search_indicator', '{"question":"GDP"}'], simpleHandler({ toolText: '{"a":{"b":1}}' }));
+  eq(r.text.trim().split('\n').length, 1, '成功信封应压成一行');
+  assert(!/\n\s+"/.test(r.text), '不应出现缩进');
+});
+
+await check('返回体是数组时 --section 报可用法错误而不是静默丢数据', async () => {
+  const r = await runCli(['call', 'edb', 'economic_search_indicator', '{"question":"GDP"}', '--section', '甲'], simpleHandler({ toolText: '[1,2,3]' }));
+  eq(r.thrown?.code, 'USAGE_ERROR');
+});
+
+await check('--section 后面漏字段名时报错，不静默当没传', async () => {
+  const r = await runCli(['call', 'edb', 'economic_search_indicator', '{"question":"GDP"}', '--section'], simpleHandler({}));
+  eq(r.thrown?.code, 'USAGE_ERROR');
+});
+
+await check('JSON 形态的网关错误被嗅探成 backend_error', async () => {
+  const r = await runCli(['call', 'finance', 'quote_get_historical_data_series', '{"windCode":"USDCNY.EX"}'],
+    simpleHandler({ toolText: '{"code": -2, "error": "QT:SQL对应的处理插件处理请求失败，ErrInfo:FindSvcName Error"}' }));
+  eq(r.json.ok, false);
+  eq(r.json.code, 'backend_error');
+});
+
+await check('超过 200 字的纯文本报错也被嗅探到（JSON 数据不受影响）', async () => {
+  const long = '未知的字段名：交易单位, 最小变动价位。合法字段：' + 'contractName, '.repeat(50);
+  const r = await runCli(['call', 'futures', 'futures_get_contract_spec', '{"windCode":"CU.SHF"}'], simpleHandler({ toolText: long }));
+  eq(r.json.code, 'backend_error');
+  const ok = await runCli(['call', 'futures', 'futures_get_contract_spec', '{"windCode":"CU.SHF"}'],
+    simpleHandler({ toolText: JSON.stringify({ data: { rows: [['x'.repeat(400)]], message: '无效的行情指标:xxx' } }) }));
+  assert(ok.json.cli_meta, '带数据的半成功不能整体判失败');
+  eq(ok.json.cli_meta.backend_message, '无效的行情指标:xxx');
+});
+
 if (LIVE) {
   await check('[live] 非法证券代码：要么报错，要么必须能从返回体看出认错了标的', async () => {
     const r = await runCli(['call', 'stock', 'stock_get_company_profile', '{"windCode":"999999.XX"}']);
@@ -345,7 +405,7 @@ if (LIVE) {
     } else {
       // 实测出现过后端模糊命中一只无关证券并返回真实数据、不报任何错的情况。
       // 这种形态本地无法拦截，只能靠返回体里回显了证券代码，让调用方自己核对。
-      const text = r.json.content?.[0]?.text || '';
+      const text = JSON.stringify(r.json.data ?? r.json.text ?? '');
       assert(/证券代码|windCode|公司名称/.test(text), '模糊命中时返回体必须回显标的，否则调用方无从核对');
       notes.push(`[live] ⚠ 非法代码被模糊命中成了真实标的（非确定性），返回体回显：${(text.match(/"证券代码":\s*"[^"]*"/) || [''])[0]}`);
     }
@@ -353,7 +413,7 @@ if (LIVE) {
 
   await check('[live] 空结果与错误可区分', async () => {
     const r = await runCli(['call', 'company', 'company_get_discredit', '{"companyKey":"贵州茅台酒股份有限公司"}']);
-    notes.push(`[live] 无失信记录时的回执形态：${r.json?.ok === false ? 'backend_error: ' + r.json.message.slice(0, 80) : '成功信封，text 前 80 字：' + (r.json?.content?.[0]?.text || '').slice(0, 80)}`);
+    notes.push(`[live] 无失信记录时的回执形态：${r.json?.ok === false ? 'backend_error: ' + r.json.message.slice(0, 80) : '成功信封，data 前 80 字：' + JSON.stringify(r.json?.data ?? r.json?.text ?? '').slice(0, 80)}`);
   });
 
 }
